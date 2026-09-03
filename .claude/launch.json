@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gmaster-dev",
+      "runtimeExecutable": "C:\\Users\\joris\\Documents\\Joris\\G-Master\\Coachings\\Espace Coaching\\Code Espace Coaching V2\\.claude\\run-dev.cmd",
+      "runtimeArgs": [],
+      "port": 3000
+    }
+  ]
+}

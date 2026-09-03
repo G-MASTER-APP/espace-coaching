@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/*
+ * Palette G-MASTER reprise de g-master.fr : fond crème, texte brun-noir,
+ * accent doré. Tailwind v4 lit ces tokens directement (pas de
+ * tailwind.config.js) et génère les classes bg-primary, text-accent, etc.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --font-sans: var(--font-inter);
+}
+
+:root {
+  --background: #f5f1ea;
+  --foreground: #2b2415;
+  --card: #ffffff;
+  --card-foreground: #2b2415;
+  --primary: #96751f;
+  --primary-foreground: #ffffff;
+  --secondary: #ede4d3;
+  --secondary-foreground: #2b2415;
+  --muted: #ede7da;
+  --muted-foreground: #7a6f5d;
+  --accent: #b8934a;
+  --accent-foreground: #2b2415;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: rgba(43, 36, 21, 0.12);
+  --input: rgba(43, 36, 21, 0.16);
+  --ring: #96751f;
+}
+
+.dark {
+  --background: #1a1712;
+  --foreground: #f5f1ea;
+  --card: #22201a;
+  --card-foreground: #f5f1ea;
+  --primary: #c9a24e;
+  --primary-foreground: #1a1712;
+  --secondary: #2e2a22;
+  --secondary-foreground: #f5f1ea;
+  --muted: #2e2a22;
+  --muted-foreground: #b4a88f;
+  --accent: #c9a24e;
+  --accent-foreground: #1a1712;
+  --destructive: #ef4444;
+  --destructive-foreground: #1a1712;
+  --border: rgba(245, 241, 234, 0.12);
+  --input: rgba(245, 241, 234, 0.16);
+  --ring: #c9a24e;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
