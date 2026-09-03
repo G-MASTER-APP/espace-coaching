@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { createClient } from "@/lib/supabase/server";
+
 /**
  * Proxy serveur vers Open Food Facts. Un User-Agent explicite est requis par
  * leur politique d'usage — les requêtes anonymes sans UA correct sont
@@ -42,40 +44,59 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ results: [] });
   }
 
-  let response: Response;
+  // Base d'aliments courants intégrée à l'app : toujours disponible (pas
+  // d'appel réseau externe), et prioritaire sur Open Food Facts dans les
+  // résultats — ce dernier reste utile pour les produits de marque
+  // spécifiques mais est connu pour être parfois indisponible (voir
+  // fetchOnce ci-dessous), donc son échec ne doit jamais faire échouer
+  // toute la recherche.
+  const supabase = await createClient();
+  const { data: commonMatches } = await supabase
+    .from("common_foods")
+    .select("id, name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g")
+    .ilike("name", `%${query}%`)
+    .order("name")
+    .limit(15);
+
+  const localResults: FoodResult[] = (commonMatches ?? []).map((f) => ({
+    id: `common-${f.id}`,
+    name: f.name,
+    brand: null,
+    caloriesPer100g: Math.round(f.calories_per_100g),
+    proteinPer100g: Math.round(f.protein_per_100g * 10) / 10,
+    carbsPer100g: Math.round(f.carbs_per_100g * 10) / 10,
+    fatPer100g: Math.round(f.fat_per_100g * 10) / 10,
+  }));
+
+  let offResults: FoodResult[] = [];
+  let offError: string | null = null;
   try {
-    response = await fetchOnce(query);
+    let response = await fetchOnce(query);
     if (!response.ok) {
       response = await fetchOnce(query);
     }
+    if (response.ok) {
+      const data = (await response.json()) as { products?: OffProduct[] };
+      offResults = (data.products ?? [])
+        .filter((p) => p.product_name && typeof p.nutriments?.["energy-kcal_100g"] === "number")
+        .map((p, index) => ({
+          id: `off-${index}-${p.product_name}`,
+          name: p.product_name as string,
+          brand: p.brands?.split(",")[0]?.trim() || null,
+          caloriesPer100g: Math.round(p.nutriments!["energy-kcal_100g"] ?? 0),
+          proteinPer100g: Math.round((p.nutriments!["proteins_100g"] ?? 0) * 10) / 10,
+          carbsPer100g: Math.round((p.nutriments!["carbohydrates_100g"] ?? 0) * 10) / 10,
+          fatPer100g: Math.round((p.nutriments!["fat_100g"] ?? 0) * 10) / 10,
+        }));
+    } else {
+      offError = "Recherche Open Food Facts indisponible pour le moment.";
+    }
   } catch {
-    return NextResponse.json(
-      { results: [], error: "Recherche indisponible pour le moment." },
-      { status: 502 }
-    );
+    offError = "Recherche Open Food Facts indisponible pour le moment.";
   }
 
-  if (!response.ok) {
-    return NextResponse.json(
-      { results: [], error: "Recherche indisponible pour le moment." },
-      { status: 502 }
-    );
-  }
-
-  const data = (await response.json()) as { products?: OffProduct[] };
-
-  const results: FoodResult[] = (data.products ?? [])
-    .filter((p) => p.product_name && typeof p.nutriments?.["energy-kcal_100g"] === "number")
-    .map((p, index) => ({
-      id: `off-${index}-${p.product_name}`,
-      name: p.product_name as string,
-      brand: p.brands?.split(",")[0]?.trim() || null,
-      caloriesPer100g: Math.round(p.nutriments!["energy-kcal_100g"] ?? 0),
-      proteinPer100g: Math.round((p.nutriments!["proteins_100g"] ?? 0) * 10) / 10,
-      carbsPer100g: Math.round((p.nutriments!["carbohydrates_100g"] ?? 0) * 10) / 10,
-      fatPer100g: Math.round((p.nutriments!["fat_100g"] ?? 0) * 10) / 10,
-    }))
-    .slice(0, 20);
-
-  return NextResponse.json({ results });
+  const results = [...localResults, ...offResults].slice(0, 30);
+  // On ne remonte l'erreur OFF que si elle laisse la recherche vide —
+  // sinon les résultats locaux suffisent, pas besoin d'inquiéter l'utilisateur.
+  return NextResponse.json({ results, error: results.length === 0 ? offError : undefined });
 }
