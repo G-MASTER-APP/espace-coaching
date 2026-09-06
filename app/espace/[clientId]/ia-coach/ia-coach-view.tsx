@@ -323,6 +323,7 @@ export function IaCoachView({
               initialMessages={messages}
               coaching={{ ...coaching, onboarding_done: onboardingDone }}
               muted={muted}
+              aiName={aiName}
               onOnboardingDone={() => setOnboardingDone(true)}
             />
           )}
