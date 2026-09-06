@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Bell, BellRing, ArrowLeftRight } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 import { IaLimitEditor } from "./ia-limit-editor";
 import { dismissIaAlert, toggleCoachingMode } from "./actions";
 
@@ -27,10 +28,44 @@ type Client = {
 };
 type ReminderState = "idle" | "sending" | "sent" | "error";
 
-export function ClientList({ clients }: { clients: Client[] }) {
+export function ClientList({ clients: initialClients }: { clients: Client[] }) {
+  const [clients, setClients] = useState(initialClients);
   const [query, setQuery] = useState("");
   const [reminders, setReminders] = useState<Record<string, ReminderState>>({});
   const [pending, startTransition] = useTransition();
+
+  // Le compteur $ (spend_total/spend_cycle) vient des props chargées à
+  // l'ouverture de la page — sans ça, il resterait figé pendant que le
+  // coach discute avec un client Coach IA sur un autre onglet, donnant
+  // l'impression trompeuse que "ça n'augmente pas" alors que ça augmente
+  // bien côté base de données.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("dashboard-ia-spend")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "ia_coaching" },
+        (payload) => {
+          const row = payload.new as {
+            client_id: string;
+            spend_total: number;
+            spend_cycle: number;
+            spend_limit: number;
+            ai_name: string | null;
+            alert_message: string | null;
+            alert_created_at: string | null;
+          };
+          setClients((current) =>
+            current.map((c) => (c.id === row.client_id ? { ...c, ia: { ...c.ia, ...row } } : c))
+          );
+        }
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, []);
 
   async function sendReminder(clientId: string) {
     setReminders((r) => ({ ...r, [clientId]: "sending" }));
