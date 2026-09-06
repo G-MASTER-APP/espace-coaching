@@ -19,6 +19,7 @@ export function OnboardingChecklistStep({
   continueLabel,
   buildSummary,
   onSubmitStart,
+  onSubmitError,
   onSaved,
 }: {
   title: string;
@@ -42,6 +43,12 @@ export function OnboardingChecklistStep({
   // parent d'afficher un écran de chargement pendant que l'IA construit le
   // programme, plutôt qu'un simple bouton désactivé.
   onSubmitStart?: () => void;
+  // Appelé si ça échoue APRÈS onSubmitStart — sans ça, un parent qui a
+  // démonté ce composant pour afficher un écran de chargement (voir
+  // onSubmitStart) resterait bloqué dessus indéfiniment : ce composant ne
+  // peut plus mettre à jour son propre état une fois démonté, seul le
+  // parent peut revenir en arrière.
+  onSubmitError?: () => void;
   onSaved: (tags: string[], details: string, reply: string | null) => void;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
@@ -80,14 +87,20 @@ export function OnboardingChecklistStep({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: buildSummary(selected, details) }),
         });
-        if (chatRes.ok) {
-          const data = (await chatRes.json()) as { reply?: string };
-          reply = data.reply ?? null;
+        if (!chatRes.ok) {
+          // Ne JAMAIS avancer comme si le programme avait été construit
+          // quand l'IA n'a en réalité pas répondu — sinon le client se
+          // retrouve dans un chat vide, onboarding marqué "fini" à tort,
+          // sans aucune indication que ça a échoué.
+          throw new Error("chat_failed");
         }
+        const data = (await chatRes.json()) as { reply?: string };
+        reply = data.reply ?? null;
       }
       onSaved(selected, details, reply);
     } catch {
       setError("Impossible d'enregistrer — réessaie.");
+      onSubmitError?.();
     } finally {
       setSaving(false);
     }

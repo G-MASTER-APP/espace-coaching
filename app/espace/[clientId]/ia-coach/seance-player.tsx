@@ -107,7 +107,11 @@ export function SeancePlayer({
           exercices: exercices.map((ex, exIdx) => ({
             nom: ex.nom,
             series: ex.series.map((s, serieIdx) => {
-              const fallback = placeholderFor(ex.nom, serieIdx, seance.exercices![exIdx].series[serieIdx]);
+              const fallback = placeholderFor(
+                ex.nom,
+                serieIdx,
+                seance.exercices?.[exIdx]?.series[serieIdx] ?? { poids_kg: 0, repetitions: 0 }
+              );
               return {
                 poids_kg: s.poids_kg ?? fallback.poids_kg,
                 repetitions: s.repetitions ?? fallback.repetitions,
@@ -151,7 +155,11 @@ export function SeancePlayer({
               <span className="text-muted-foreground">Répétitions</span>
               <span />
               {ex.series.map((s, serieIdx) => {
-                const ph = placeholderFor(ex.nom, serieIdx, seance.exercices![exIdx].series[serieIdx]);
+                const ph = placeholderFor(
+                  ex.nom,
+                  serieIdx,
+                  seance.exercices?.[exIdx]?.series[serieIdx] ?? { poids_kg: 0, repetitions: 0 }
+                );
                 return (
                   <FragmentRow
                     key={serieIdx}

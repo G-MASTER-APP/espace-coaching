@@ -132,8 +132,9 @@ export async function runProactiveCheckIn(
       model: "claude-sonnet-5",
       // Le message reste censé être bref (recap/relance), mais ce prompt
       // autorise aussi un ajustement programme/habitudes (JSON) si la
-      // situation le justifie — marge pour ne jamais couper ces blocs.
-      max_tokens: 2000,
+      // situation le justifie — même marge que la route de chat principale
+      // (4000) pour ne jamais couper ces blocs en plein milieu.
+      max_tokens: 4000,
       system: systemPrompt,
       messages: [
         ...orderedHistory.map((m) => ({ role: m.role, content: m.content })),

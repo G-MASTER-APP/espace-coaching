@@ -282,6 +282,7 @@ export function IaCoachView({
               return `${sportPart} ${santePart} ${activitePart} Construis-moi maintenant mon programme complet et mes objectifs quotidiens.`;
             }}
             onSubmitStart={() => setBuildingProgram(true)}
+            onSubmitError={() => setBuildingProgram(false)}
             onSaved={handleActiviteSaved}
           />
         )

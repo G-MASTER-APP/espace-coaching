@@ -295,10 +295,14 @@ function extractBlock(
   endMarker: string
 ): { rest: string; content: string | null } {
   const startIdx = text.indexOf(startMarker);
-  const endIdx = text.indexOf(endMarker);
   if (startIdx === -1) {
     return { rest: text, content: null };
   }
+  // Cherche la fin APRÈS le début du bloc : sinon un marqueur de fin qui
+  // apparaîtrait par coïncidence plus tôt dans le texte visible (ex. le
+  // modèle cite/répète un marqueur dans du texte libre) ferait croire à une
+  // troncature et supprimerait à tort tout le contenu réel qui suit.
+  const endIdx = text.indexOf(endMarker, startIdx + startMarker.length);
   if (endIdx === -1 || endIdx < startIdx) {
     // Marqueur de fin jamais atteint (réponse tronquée par max_tokens) :
     // le bloc est de toute façon inexploitable, mais on le retire quand

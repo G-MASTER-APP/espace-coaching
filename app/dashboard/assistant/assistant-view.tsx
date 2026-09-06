@@ -20,6 +20,11 @@ type DraftDiete = {
 type DraftObjectif = { tags: string[]; details?: string };
 
 type Message = {
+  // Client pour lequel CE message/brouillon a été généré — indispensable
+  // pour ne jamais appliquer (ou même afficher) un brouillon sous le mauvais
+  // client si le coach change de sélection pendant qu'une réponse est encore
+  // en vol (latence IA de plusieurs secondes).
+  clientId: string;
   role: "user" | "assistant";
   content: string;
   draftProgramme?: Seance[] | null;
@@ -35,6 +40,11 @@ export function AssistantView({ clients }: { clients: Client[] }) {
   const [sending, setSending] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Toujours à jour (contrairement à la variable `clientId` capturée par la
+  // closure de `send`), pour détecter un changement de client pendant qu'une
+  // requête est encore en vol.
+  const clientIdRef = useRef(clientId);
+  clientIdRef.current = clientId;
 
   useEffect(() => {
     // Changer de client repart d'une conversation neuve — le contexte
@@ -51,16 +61,21 @@ export function AssistantView({ clients }: { clients: Client[] }) {
   async function send(value: string) {
     const trimmed = value.trim();
     if (!trimmed || sending || !clientId) return;
+    // Figée pour toute la durée de cet échange — si le coach change de
+    // client pendant que la requête est en vol, c'est CETTE valeur qui
+    // continue de faire foi pour ce message précis, jamais la sélection
+    // courante au moment où la réponse arrive.
+    const requestClientId = clientId;
     setErrorMsg(null);
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
-    setMessages((m) => [...m, { role: "user", content: trimmed }]);
+    setMessages((m) => [...m, { clientId: requestClientId, role: "user", content: trimmed }]);
     setTextInput("");
     setSending(true);
     try {
       const res = await fetch("/api/coach-assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientId, text: trimmed, history }),
+        body: JSON.stringify({ clientId: requestClientId, text: trimmed, history }),
       });
       const data = (await res.json()) as {
         reply?: string;
@@ -73,9 +88,17 @@ export function AssistantView({ clients }: { clients: Client[] }) {
         setErrorMsg(data.error ?? "L'assistant n'a pas pu répondre.");
         return;
       }
+      if (clientIdRef.current !== requestClientId) {
+        // Le coach a changé de client entre-temps : cette réponse ne
+        // correspond plus à ce qui est affiché, on ne l'ajoute nulle part
+        // plutôt que de risquer qu'elle atterrisse (et soit appliquée) sous
+        // le mauvais client.
+        return;
+      }
       setMessages((m) => [
         ...m,
         {
+          clientId: requestClientId,
           role: "assistant",
           content: data.reply!,
           draftProgramme: data.draftProgramme,
@@ -91,10 +114,13 @@ export function AssistantView({ clients }: { clients: Client[] }) {
   }
 
   async function applyDraft(index: number, kind: "programme" | "diete" | "objectif", draft: unknown) {
+    // Le client cible vient TOUJOURS du message qui porte ce brouillon, pas
+    // de la sélection courante — même filet de sécurité que côté envoi.
+    const targetClientId = messages[index]?.clientId ?? clientId;
     const res = await fetch("/api/coach-assistant/apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId, kind, draft }),
+      body: JSON.stringify({ clientId: targetClientId, kind, draft }),
     });
     if (!res.ok) {
       setErrorMsg("Impossible d'appliquer ce brouillon.");

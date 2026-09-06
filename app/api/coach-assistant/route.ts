@@ -36,11 +36,16 @@ export async function POST(request: Request) {
 
   const { data: client } = await supabase
     .from("profiles")
-    .select("full_name, coach_id")
+    .select("full_name, coach_id, coaching_mode")
     .eq("id", clientId)
     .single();
   if (!client || client.coach_id !== user.id) {
     return NextResponse.json({ error: "Ce client ne t'est pas rattaché." }, { status: 403 });
+  }
+  if (client.coaching_mode === "ia") {
+    // Son programme/diète/objectif vivent dans ia_coaching, pas dans les
+    // tables que cet assistant lit/écrit — l'IA les gère déjà elle-même.
+    return NextResponse.json({ error: "Ce client est suivi par le Coach IA, pas par toi directement." }, { status: 400 });
   }
 
   const [{ data: program }, { data: dietRow }, { data: objectifRow }] = await Promise.all([

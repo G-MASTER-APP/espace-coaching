@@ -13,7 +13,7 @@ const DIETE_KEYS = ["calories_target", "protein_target_g", "carbs_target_g", "fa
 
 export async function POST(request: Request) {
   const { clientId, kind, draft } = (await request.json()) as ApplyBody;
-  if (!clientId || !kind || draft === undefined) {
+  if (!clientId || !kind || draft === undefined || draft === null) {
     return NextResponse.json({ error: "Requête incomplète." }, { status: 400 });
   }
 
@@ -30,9 +30,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Réservé au coach." }, { status: 403 });
   }
 
-  const { data: client } = await supabase.from("profiles").select("coach_id").eq("id", clientId).single();
+  const { data: client } = await supabase
+    .from("profiles")
+    .select("coach_id, coaching_mode")
+    .eq("id", clientId)
+    .single();
   if (!client || client.coach_id !== user.id) {
     return NextResponse.json({ error: "Ce client ne t'est pas rattaché." }, { status: 403 });
+  }
+  if (client.coaching_mode === "ia") {
+    return NextResponse.json({ error: "Ce client est suivi par le Coach IA, pas par toi directement." }, { status: 400 });
   }
 
   if (kind === "programme") {
@@ -55,11 +62,18 @@ export async function POST(request: Request) {
     const { error } = await supabase.from("nutrition_goals").update(patch).eq("user_id", clientId);
     if (error) return NextResponse.json({ error: "Impossible d'appliquer la diète." }, { status: 500 });
   } else if (kind === "objectif") {
-    const { tags, details } = draft as { tags?: string[]; details?: string };
-    const validTags = (tags ?? []).filter((t): t is string => (OBJECTIF_OPTIONS as readonly string[]).includes(t));
+    const raw = draft as { tags?: unknown; details?: unknown };
+    const rawTags = Array.isArray(raw.tags) ? raw.tags : [];
+    const validTags = rawTags.filter(
+      (t): t is string => typeof t === "string" && (OBJECTIF_OPTIONS as readonly string[]).includes(t)
+    );
+    const cleanDetails = typeof raw.details === "string" ? raw.details.trim() || null : null;
+    if (validTags.length === 0) {
+      return NextResponse.json({ error: "Objectif invalide." }, { status: 400 });
+    }
     const { error } = await supabase
       .from("client_objectifs")
-      .upsert({ user_id: clientId, tags: validTags, details: details?.trim() || null }, { onConflict: "user_id" });
+      .upsert({ user_id: clientId, tags: validTags, details: cleanDetails }, { onConflict: "user_id" });
     if (error) return NextResponse.json({ error: "Impossible d'appliquer l'objectif." }, { status: 500 });
   } else {
     return NextResponse.json({ error: "Type de brouillon inconnu." }, { status: 400 });
