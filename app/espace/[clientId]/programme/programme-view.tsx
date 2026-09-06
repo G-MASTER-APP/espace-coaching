@@ -20,12 +20,14 @@ export function ProgrammeView({
   programId: initialProgramId,
   programUrl: initialProgramUrl,
   initialVideos,
+  isIaClient,
 }: {
   clientId: string;
   isCoach: boolean;
   programId: string | null;
   programUrl: string;
   initialVideos: VideoRow[];
+  isIaClient?: boolean;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [programId, setProgramId] = useState(initialProgramId);
@@ -118,6 +120,14 @@ export function ProgrammeView({
   return (
     <div className="flex flex-col gap-8 px-4 py-6">
       <PageHeader icon="💪" eyebrow="Espace" title="Programme" />
+
+      {isIaClient && !isCoach && (
+        <p className="rounded-xl border border-border bg-secondary/60 px-4 py-3 text-sm text-muted-foreground">
+          Ton programme de sport est construit et ajusté par ton Coach IA — retrouve-le dans l&apos;onglet{" "}
+          <span className="font-semibold text-foreground">Coach IA</span>, sous-onglet{" "}
+          <span className="font-semibold text-foreground">Séance</span>.
+        </p>
+      )}
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between">

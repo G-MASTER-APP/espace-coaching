@@ -19,6 +19,12 @@ export default async function ProgrammePage({
     .single();
   const isCoach = viewer?.role === "coach";
 
+  const { data: target } = await supabase
+    .from("profiles")
+    .select("coaching_mode")
+    .eq("id", clientId)
+    .maybeSingle();
+
   const [{ data: program }, { data: videos }] = await Promise.all([
     supabase.from("programs").select("id, program_url").eq("user_id", clientId).maybeSingle(),
     supabase
@@ -35,6 +41,7 @@ export default async function ProgrammePage({
       programId={program?.id ?? null}
       programUrl={program?.program_url ?? ""}
       initialVideos={videos ?? []}
+      isIaClient={target?.coaching_mode === "ia"}
     />
   );
 }

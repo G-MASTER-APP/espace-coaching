@@ -273,7 +273,7 @@ export function IaCoachView({
                 ".";
               const activitePart =
                 `Niveau d'activité : ${tags.join(", ")}` + (details.trim() ? ` (${details.trim()})` : "") + ".";
-              return `${sportPart} ${santePart} ${activitePart}`;
+              return `${sportPart} ${santePart} ${activitePart} Construis-moi maintenant mon programme complet et mes objectifs quotidiens.`;
             }}
             onSubmitStart={() => setBuildingProgram(true)}
             onSaved={handleActiviteSaved}

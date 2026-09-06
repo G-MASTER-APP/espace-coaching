@@ -194,6 +194,10 @@ export function buildSystemPrompt({
   if (!onboardingDone) {
     return (
       base +
+      "\n\nCONSIGNE LA PLUS IMPORTANTE DE CE MESSAGE : ta réponse à CE message doit être le programme complet " +
+      "du client (voir les instructions détaillées plus bas) — PAS une salutation, PAS un simple accusé de " +
+      "réception, PAS \"je m'en occupe\". Toutes les infos nécessaires sont déjà ci-dessous : construis " +
+      "directement, ne renvoie jamais une réponse sans le bloc programme sur ce message précis." +
       objectifContext +
       sportContext +
       santeContext +
