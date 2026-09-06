@@ -109,10 +109,7 @@ export function IaCoachView({
           initialTags={objectifTags}
           initialDetails={objectifDetails}
           isOnboarding
-          onSaved={(tags, details) => {
-            setObjectifTags(tags);
-            setObjectifDetails(details);
-          }}
+          onSaved={handleObjectifSaved}
         />
       ) : (
         <>

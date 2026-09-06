@@ -112,7 +112,7 @@ export async function POST(request: Request) {
     const rawText: string =
       data.content?.find((c: { type: string }) => c.type === "text")?.text ?? "Je n'ai rien à répondre.";
 
-    const { displayText, program, logs, alert } = extractStructuredBlocks(rawText);
+    const { displayText, program, logs, alert, aiName } = extractStructuredBlocks(rawText);
 
     await supabase.from("ia_messages").insert({ client_id: user.id, role: "assistant", content: displayText });
     await applyExtractedLogs(supabase, user.id, logs);
@@ -145,6 +145,9 @@ export async function POST(request: Request) {
     if (alert) {
       update.alert_message = alert;
       update.alert_created_at = new Date().toISOString();
+    }
+    if (aiName && !coaching.ai_name) {
+      update.ai_name = aiName;
     }
 
     await admin.from("ia_coaching").update(update).eq("client_id", user.id);

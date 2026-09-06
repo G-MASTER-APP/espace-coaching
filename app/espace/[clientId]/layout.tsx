@@ -60,14 +60,19 @@ export default async function EspaceLayout({
     <div className="flex min-h-dvh flex-col bg-background">
       <EspaceHeader role={viewer.role as "coach" | "client"} clients={coachClients} currentClientId={clientId} />
       <div className="flex-1 pb-20">{children}</div>
-      {/* key={clientId} : remonte le widget (et son état) quand le coach
+      {/* Jarvis n'a plus sa place pour un client suivi par le Coach IA — ce
+          serait deux assistants flottants qui se marchent dessus. Reste
+          disponible pour les clients suivis par Joris.
+          key={clientId} : remonte le widget (et son état) quand le coach
           change de client via le sélecteur, plutôt que de garder la
           conversation du client précédent affichée par erreur. */}
-      <JarvisWidget
-        key={clientId}
-        mode={{ kind: "client", clientId, coachId: client.coach_id ?? viewer.id }}
-        isCoach={viewer.role === "coach"}
-      />
+      {client.coaching_mode !== "ia" && (
+        <JarvisWidget
+          key={clientId}
+          mode={{ kind: "client", clientId, coachId: client.coach_id ?? viewer.id }}
+          isCoach={viewer.role === "coach"}
+        />
+      )}
       <BottomTabBar clientId={clientId} showIaCoachTab={client.coaching_mode === "ia"} />
     </div>
   );

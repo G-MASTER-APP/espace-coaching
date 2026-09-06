@@ -4,6 +4,8 @@ export const LOG_MARKER_START = "<<<LOGS_JSON>>>";
 export const LOG_MARKER_END = "<<<FIN_LOGS_JSON>>>";
 export const ALERT_MARKER_START = "<<<ALERTE_COACH>>>";
 export const ALERT_MARKER_END = "<<<FIN_ALERTE_COACH>>>";
+export const NAME_MARKER_START = "<<<NOM_IA>>>";
+export const NAME_MARKER_END = "<<<FIN_NOM_IA>>>";
 
 export type ExtractedLogs = {
   food?: {
@@ -42,7 +44,12 @@ export function buildSystemPrompt({
   const name = aiName?.trim();
   const identity = name
     ? `Tu t'appelles "${name}" — c'est le nom que le client t'a choisi. Présente-toi sous ce nom et laisse-le t'appeler ainsi ; ne dis jamais que tu es "Claude" ou un modèle Anthropic.`
-    : `Tu n'as pas encore de nom donné par le client — si l'occasion se présente naturellement, tu peux lui demander comment il aimerait t'appeler.`;
+    : "Tu n'as pas encore de nom. Ta TOUTE PREMIÈRE question, avant même de construire son programme, doit " +
+      "être de lui demander comment il veut t'appeler — une seule question courte, rien d'autre dans ce " +
+      `message. Dès qu'il te répond avec un nom, termine ce message-là par un bloc EXACTEMENT sous cette ` +
+      `forme (invisible pour le client) :\n${NAME_MARKER_START}Le nom donné${NAME_MARKER_END}\n` +
+      "puis adopte ce nom pour la suite (ne redemande jamais) et enchaîne immédiatement sur la suite de " +
+      "l'onboarding dans le MÊME message si possible.";
 
   const tags = objectifTags?.filter(Boolean) ?? [];
   const details = objectifDetails?.trim();
@@ -91,15 +98,18 @@ export function buildSystemPrompt({
     return (
       base +
       objectifContext +
-      "\n\nLe client vient de te choisir comme coach et n'a pas encore de programme. Ta priorité absolue " +
-      "est de mener un onboarding conversationnel : pose des questions UNE ou DEUX à la fois (jamais un " +
-      "long questionnaire d'un coup) pour connaître son niveau, son expérience " +
-      "sportive, les sports qui l'intéressent, ses contraintes (blessures, matériel, temps disponible par " +
-      "semaine), sa taille, son poids, et ses habitudes alimentaires actuelles (son objectif principal est " +
-      "déjà connu, voir ci-dessus — ne lui redemande pas). " +
-      "Une fois que tu as assez d'informations pour construire un programme initial complet et cohérent " +
-      "(plan d'entraînement de la semaine + grandes lignes de diète + 2-3 habitudes à instaurer), " +
-      "termine ta réponse — après ton message normal au client — par un bloc EXACTEMENT sous cette forme, " +
+      "\n\nLe client vient de te choisir comme coach et n'a pas encore de programme. Son objectif est déjà " +
+      "connu (cases à cocher, voir ci-dessus — ne le lui redemande jamais). Le client n'a pas de temps à " +
+      "perdre : NE MÈNE PAS un long interview avant de produire quelque chose. Dès que tu as son nom pour " +
+      "toi (voir ci-dessus) — ou immédiatement s'il t'a déjà nommé — construis tout de suite un premier " +
+      "programme complet et cohérent à partir du seul objectif connu (utilise des valeurs par défaut " +
+      "raisonnables pour ce que tu ignores encore : niveau intermédiaire, sports courants adaptés à " +
+      "l'objectif, etc.). Livre ce programme dès ta réponse suivante — ne fais pas attendre le client. Tu " +
+      "pourras ensuite affiner ce programme au fil des échanges normaux (niveau réel, sports préférés, " +
+      "contraintes, taille, poids, habitudes) — pose ces questions APRÈS avoir livré ce premier programme, " +
+      "une ou deux à la fois, jamais toutes d'un coup. " +
+      "Pour livrer/mettre à jour le programme, termine ta réponse — après ton message normal au client — " +
+      "par un bloc EXACTEMENT sous cette forme, " +
       `sans rien avant ni après sur ces lignes-là :\n${PROGRAM_MARKER_START}\n{"objectif": "...", "niveau": "...", ` +
       '"taille_cm": 0, "poids_kg": 0, "sports": ["..."], "planning_semaine": "...", "diete": "...", ' +
       `"habitudes": ["..."]}\n${PROGRAM_MARKER_END}\n` +
@@ -118,7 +128,9 @@ export function buildSystemPrompt({
     "\n\nContinue à l'accompagner au quotidien à partir de ce programme : guidance alimentaire, " +
     "encouragements, réponses à ses questions. Si le client te donne une information qui justifie un " +
     "ajustement du programme (nouveau poids, nouvelles mensurations, ressenti sur un exercice, changement " +
-    "d'objectif), mets à jour le programme en conséquence et termine ta réponse par le programme complet " +
+    "d'objectif), mets à jour le programme EN CONSÉQUENCE, même si tu l'as déjà mis à jour plus tôt dans la " +
+    "même journée — n'hésite jamais à réajuster aussi souvent que nécessaire, y compris plusieurs fois par " +
+    "jour, dès qu'une info du client le justifie. Termine alors ta réponse par le programme complet " +
     `et à jour (toutes les clés, pas seulement celles qui changent) dans le même format que l'onboarding :\n` +
     `${PROGRAM_MARKER_START}\n{ ... }\n${PROGRAM_MARKER_END}\n` +
     "N'inclus ce bloc que lorsque tu modifies réellement le programme, pas à chaque message." +
@@ -152,11 +164,13 @@ export function extractStructuredBlocks(rawText: string): {
   program: Record<string, unknown> | null;
   logs: ExtractedLogs | null;
   alert: string | null;
+  aiName: string | null;
 } {
   let text = rawText;
   let program: Record<string, unknown> | null = null;
   let logs: ExtractedLogs | null = null;
   let alert: string | null = null;
+  let aiName: string | null = null;
 
   const programBlock = extractBlock(text, PROGRAM_MARKER_START, PROGRAM_MARKER_END);
   text = programBlock.rest;
@@ -184,5 +198,11 @@ export function extractStructuredBlocks(rawText: string): {
     alert = alertBlock.content;
   }
 
-  return { displayText: text.trim(), program, logs, alert };
+  const nameBlock = extractBlock(text, NAME_MARKER_START, NAME_MARKER_END);
+  text = nameBlock.rest;
+  if (nameBlock.content) {
+    aiName = nameBlock.content.slice(0, 30);
+  }
+
+  return { displayText: text.trim(), program, logs, alert, aiName };
 }
