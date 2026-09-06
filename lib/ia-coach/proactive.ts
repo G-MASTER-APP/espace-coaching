@@ -61,7 +61,7 @@ export async function runProactiveCheckIn(
   const { data: coaching } = await admin
     .from("ia_coaching")
     .select(
-      "spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details, last_daily_at, last_evening_at, last_weekly_at, last_monthly_at"
+      "spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details, sport_tags, sport_details, antecedents_tags, antecedents_details, last_daily_at, last_evening_at, last_weekly_at, last_monthly_at"
     )
     .eq("client_id", clientId)
     .single();
@@ -98,6 +98,10 @@ export async function runProactiveCheckIn(
     aiName: coaching.ai_name,
     objectifTags: coaching.objectif_tags,
     objectifDetails: coaching.objectif_details,
+    sportTags: coaching.sport_tags,
+    sportDetails: coaching.sport_details,
+    antecedentsTags: coaching.antecedents_tags,
+    antecedentsDetails: coaching.antecedents_details,
   });
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {

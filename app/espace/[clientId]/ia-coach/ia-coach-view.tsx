@@ -11,8 +11,11 @@ import { IaVideoAnalyzer } from "./ia-video-analyzer";
 import { IaLiveAnalyzer } from "./ia-live-analyzer";
 import { ObjectifSelector } from "./objectif-selector";
 import { AiNameStep } from "./ai-name-step";
+import { OnboardingChecklistStep } from "./onboarding-checklist-step";
 import { PremierBilanPrompt } from "./premier-bilan-prompt";
 import { SeanceTab } from "./seance-tab";
+import { SPORT_OPTIONS } from "@/lib/ia-coach/sport-options";
+import { ANTECEDENTS_OPTIONS } from "@/lib/ia-coach/antecedents-options";
 
 type Message = { id?: string; role: "user" | "assistant"; content: string };
 type Coaching = {
@@ -24,6 +27,10 @@ type Coaching = {
   ai_name: string | null;
   objectif_tags: string[];
   objectif_details: string | null;
+  sport_tags: string[];
+  sport_details: string | null;
+  antecedents_tags: string[];
+  antecedents_details: string | null;
 };
 type Analysis = {
   id: string;
@@ -63,6 +70,9 @@ export function IaCoachView({
   const [aiName, setAiName] = useState(coaching.ai_name);
   const [objectifTags, setObjectifTags] = useState(coaching.objectif_tags);
   const [objectifDetails, setObjectifDetails] = useState(coaching.objectif_details ?? "");
+  const [sportTags, setSportTags] = useState(coaching.sport_tags);
+  const [sportDetails, setSportDetails] = useState(coaching.sport_details ?? "");
+  const [antecedentsTags, setAntecedentsTags] = useState(coaching.antecedents_tags);
   const [messages, setMessages] = useState(initialMessages);
   const [bilanDone, setBilanDone] = useState(hasBilan);
   const [bilanDismissed, setBilanDismissed] = useState(() => {
@@ -101,11 +111,11 @@ export function IaCoachView({
     }
   }
 
-  // Onboarding : une fois l'objectif posé, on révèle directement la
-  // discussion (il n'y a pas encore d'onglets à ce stade).
+  // Onboarding : après l'objectif, d'autres questions à cases à cocher
+  // suivent encore (sport, antécédents) — on avance juste à la suivante,
+  // la discussion ne se révèle qu'après la dernière.
   function handleOnboardingObjectifSaved(tags: string[], details: string, reply: string | null) {
     applyObjectifUpdate(tags, details, reply);
-    setTab("chat");
   }
 
   // Onglet Objectif (après onboarding) : on reste sur place — l'utilisateur
@@ -116,12 +126,40 @@ export function IaCoachView({
     applyObjectifUpdate(tags, details, reply);
   }
 
+  function handleSportSaved(tags: string[], details: string) {
+    setSportTags(tags);
+    setSportDetails(details);
+  }
+
+  // Dernière question de l'onboarding : la réponse envoie tout au Coach IA
+  // (objectif + sport + antécédents sont déjà connus côté serveur via le
+  // system prompt) qui construit le programme immédiatement — on révèle
+  // alors la discussion.
+  function handleSanteSaved(tags: string[], details: string, reply: string | null) {
+    setAntecedentsTags(tags);
+    if (reply) {
+      setMessages((m) => [...m, { role: "assistant", content: reply }]);
+    }
+    setTab("chat");
+  }
+
   // Avant même l'objectif : le client choisit le nom de son IA.
   const needsNameFirst = !isCoachView && !coaching.onboarding_done && !aiName;
   // Onboarding pas fini et aucun objectif choisi : on bloque sur le
   // sélecteur avant de laisser le client discuter avec l'IA.
   const needsObjectifFirst =
     !isCoachView && !coaching.onboarding_done && !needsNameFirst && objectifTags.length === 0;
+  // Puis sport & matériel, puis antécédents médicaux — même principe, une
+  // question à la fois avant de laisser parler l'IA.
+  const needsSportFirst =
+    !isCoachView && !coaching.onboarding_done && !needsNameFirst && !needsObjectifFirst && sportTags.length === 0;
+  const needsSanteFirst =
+    !isCoachView &&
+    !coaching.onboarding_done &&
+    !needsNameFirst &&
+    !needsObjectifFirst &&
+    !needsSportFirst &&
+    antecedentsTags.length === 0;
   // Onboarding fini mais aucun bilan de départ : proposé (jamais bloquant,
   // le client peut le repousser à plus tard).
   const showBilanPrompt = !isCoachView && coaching.onboarding_done && !bilanDone && !bilanDismissed;
@@ -158,6 +196,33 @@ export function IaCoachView({
           initialDetails={objectifDetails}
           isOnboarding
           onSaved={handleOnboardingObjectifSaved}
+        />
+      ) : needsSportFirst ? (
+        <OnboardingChecklistStep
+          title="Ton sport & ton matériel"
+          subtitle="Coche ce qui te correspond — tu peux cocher plusieurs cases."
+          options={SPORT_OPTIONS}
+          freeformPlaceholder="Ex. Je fais du CrossFit 2x/semaine"
+          apiPath="/api/ia-coach/sport"
+          continueLabel="Question suivante"
+          onSaved={handleSportSaved}
+        />
+      ) : needsSanteFirst ? (
+        <OnboardingChecklistStep
+          title="Antécédents médicaux"
+          subtitle="Coche ce qui s'applique — important pour un programme adapté et sans risque."
+          options={ANTECEDENTS_OPTIONS}
+          freeformPlaceholder="Ex. Opération du genou il y a 2 ans"
+          apiPath="/api/ia-coach/sante"
+          continueLabel="C'est parti"
+          buildSummary={(tags, details) => {
+            const sportPart =
+              `Sport & matériel : ${sportTags.join(", ")}` + (sportDetails ? ` (${sportDetails})` : "") + ".";
+            const santePart =
+              `Antécédents médicaux : ${tags.join(", ")}` + (details.trim() ? ` (${details.trim()})` : "") + ".";
+            return `${sportPart} ${santePart}`;
+          }}
+          onSaved={handleSanteSaved}
         />
       ) : (
         <>

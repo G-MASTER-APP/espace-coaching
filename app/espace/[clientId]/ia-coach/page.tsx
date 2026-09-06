@@ -35,7 +35,7 @@ export default async function IaCoachPage({
     supabase
       .from("ia_coaching")
       .select(
-        "spend_total, spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details"
+        "spend_total, spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details, sport_tags, sport_details, antecedents_tags, antecedents_details"
       )
       .eq("client_id", clientId)
       .single(),
@@ -79,7 +79,12 @@ export default async function IaCoachPage({
       initialMessages={messages ?? []}
       coaching={
         coaching
-          ? { ...coaching, objectif_tags: coaching.objectif_tags ?? [] }
+          ? {
+              ...coaching,
+              objectif_tags: coaching.objectif_tags ?? [],
+              sport_tags: coaching.sport_tags ?? [],
+              antecedents_tags: coaching.antecedents_tags ?? [],
+            }
           : {
               spend_total: 0,
               spend_cycle: 0,
@@ -89,6 +94,10 @@ export default async function IaCoachPage({
               ai_name: null,
               objectif_tags: [],
               objectif_details: null,
+              sport_tags: [],
+              sport_details: null,
+              antecedents_tags: [],
+              antecedents_details: null,
             }
       }
       analyses={analyses ?? []}

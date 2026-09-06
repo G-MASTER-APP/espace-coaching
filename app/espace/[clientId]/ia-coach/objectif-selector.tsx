@@ -51,7 +51,12 @@ export function ObjectifSelector({
         JSON.stringify([...selected].sort()) !== JSON.stringify([...initialTags].sort()) ||
         details.trim() !== initialDetails.trim();
       let reply: string | null = null;
-      if (changed) {
+      // Pendant l'onboarding, d'autres questions suivent encore (sport,
+      // antécédents) avant que l'IA ait tout ce qu'il faut pour construire
+      // le programme — on enregistre et on avance, sans la faire parler
+      // maintenant. Hors onboarding (onglet Objectif édité plus tard), le
+      // programme existe déjà : on la prévient tout de suite du changement.
+      if (changed && !isOnboarding) {
         const parts = [`${isOnboarding ? "Mon objectif" : "J'ai mis à jour mon objectif"} : ${selected.join(", ")}.`];
         if (details.trim()) parts.push(`Précisément : ${details.trim()}`);
         const chatRes = await fetch("/api/ia-coach", {
@@ -118,7 +123,7 @@ export function ObjectifSelector({
       {error && <p className="text-xs text-destructive">{error}</p>}
       {justSaved && <p className="text-xs font-semibold text-primary">✓ Objectif enregistré.</p>}
       <Button type="button" onClick={submit} disabled={saving}>
-        {saving ? "Enregistrement…" : isOnboarding ? "Continuer" : "Enregistrer"}
+        {saving ? "Enregistrement…" : isOnboarding ? "Question suivante" : "Enregistrer"}
       </Button>
     </div>
   );

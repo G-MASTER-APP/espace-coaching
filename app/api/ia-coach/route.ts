@@ -45,7 +45,9 @@ export async function POST(request: Request) {
 
   const { data: coaching } = await supabase
     .from("ia_coaching")
-    .select("spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details")
+    .select(
+      "spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details, sport_tags, sport_details, antecedents_tags, antecedents_details"
+    )
     .eq("client_id", user.id)
     .single();
 
@@ -82,6 +84,10 @@ export async function POST(request: Request) {
     aiName: coaching.ai_name,
     objectifTags: coaching.objectif_tags,
     objectifDetails: coaching.objectif_details,
+    sportTags: coaching.sport_tags,
+    sportDetails: coaching.sport_details,
+    antecedentsTags: coaching.antecedents_tags,
+    antecedentsDetails: coaching.antecedents_details,
   });
 
   try {
