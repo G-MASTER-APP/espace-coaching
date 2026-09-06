@@ -34,7 +34,9 @@ export default async function IaCoachPage({
   const [{ data: coaching }, { data: messages }, { data: analyses }] = await Promise.all([
     supabase
       .from("ia_coaching")
-      .select("spend_total, spend_cycle, spend_limit, onboarding_done, program, ai_name")
+      .select(
+        "spend_total, spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details"
+      )
       .eq("client_id", clientId)
       .single(),
     supabase
@@ -57,14 +59,18 @@ export default async function IaCoachPage({
       isCoachView={isCoachView}
       initialMessages={messages ?? []}
       coaching={
-        coaching ?? {
-          spend_total: 0,
-          spend_cycle: 0,
-          spend_limit: 15,
-          onboarding_done: false,
-          program: {},
-          ai_name: null,
-        }
+        coaching
+          ? { ...coaching, objectif_tags: coaching.objectif_tags ?? [] }
+          : {
+              spend_total: 0,
+              spend_cycle: 0,
+              spend_limit: 15,
+              onboarding_done: false,
+              program: {},
+              ai_name: null,
+              objectif_tags: [],
+              objectif_details: null,
+            }
       }
       analyses={analyses ?? []}
     />

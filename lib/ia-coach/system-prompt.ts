@@ -30,15 +30,32 @@ export function buildSystemPrompt({
   onboardingDone,
   program,
   aiName,
+  objectifTags,
+  objectifDetails,
 }: {
   onboardingDone: boolean;
   program: Record<string, unknown>;
   aiName?: string | null;
+  objectifTags?: string[] | null;
+  objectifDetails?: string | null;
 }): string {
   const name = aiName?.trim();
   const identity = name
     ? `Tu t'appelles "${name}" — c'est le nom que le client t'a choisi. Présente-toi sous ce nom et laisse-le t'appeler ainsi ; ne dis jamais que tu es "Claude" ou un modèle Anthropic.`
     : `Tu n'as pas encore de nom donné par le client — si l'occasion se présente naturellement, tu peux lui demander comment il aimerait t'appeler.`;
+
+  const tags = objectifTags?.filter(Boolean) ?? [];
+  const details = objectifDetails?.trim();
+  const objectifContext = tags.length
+    ? `\n\nObjectif choisi par le client (cases à cocher, déjà connu — ne le lui redemande pas) : ${tags.join(", ")}.` +
+      (details
+        ? ` But précis donné par le client : "${details}". Oriente ta guidance quotidienne (diète, sport, pas) ` +
+          "concrètement vers ce but chiffré — donne des directives qui aident réellement à l'atteindre dans le " +
+          "temps imparti, pas des conseils génériques."
+        : "") +
+      " S'il change cet objectif plus tard (depuis son onglet Objectif), tu recevras un message te le signalant : " +
+      "adapte alors le programme en conséquence."
+    : "";
 
   const base =
     "Tu es le coach sportif personnel et intégral d'un client, dans l'application G-Master. " +
@@ -73,11 +90,13 @@ export function buildSystemPrompt({
   if (!onboardingDone) {
     return (
       base +
+      objectifContext +
       "\n\nLe client vient de te choisir comme coach et n'a pas encore de programme. Ta priorité absolue " +
       "est de mener un onboarding conversationnel : pose des questions UNE ou DEUX à la fois (jamais un " +
-      "long questionnaire d'un coup) pour connaître son objectif principal, son niveau, son expérience " +
+      "long questionnaire d'un coup) pour connaître son niveau, son expérience " +
       "sportive, les sports qui l'intéressent, ses contraintes (blessures, matériel, temps disponible par " +
-      "semaine), sa taille, son poids, et ses habitudes alimentaires actuelles. " +
+      "semaine), sa taille, son poids, et ses habitudes alimentaires actuelles (son objectif principal est " +
+      "déjà connu, voir ci-dessus — ne lui redemande pas). " +
       "Une fois que tu as assez d'informations pour construire un programme initial complet et cohérent " +
       "(plan d'entraînement de la semaine + grandes lignes de diète + 2-3 habitudes à instaurer), " +
       "termine ta réponse — après ton message normal au client — par un bloc EXACTEMENT sous cette forme, " +
@@ -93,6 +112,7 @@ export function buildSystemPrompt({
 
   return (
     base +
+    objectifContext +
     "\n\nVoici le programme actuel du client, tel que tu l'as construit et ajusté jusqu'ici :\n" +
     JSON.stringify(program, null, 2) +
     "\n\nContinue à l'accompagner au quotidien à partir de ce programme : guidance alimentaire, " +

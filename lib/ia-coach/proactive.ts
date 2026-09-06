@@ -3,14 +3,22 @@ import { computeCostUsd, computeCycleStart } from "@/lib/ia-coach/pricing";
 import { buildSystemPrompt, extractStructuredBlocks } from "@/lib/ia-coach/system-prompt";
 import { sendPushToUser } from "@/lib/push/send";
 
-export type ProactiveKind = "daily" | "weekly" | "monthly";
+export type ProactiveKind = "daily" | "evening" | "weekly" | "monthly";
 
 const TRIGGER_PROMPT: Record<ProactiveKind, string> = {
   daily:
     "[Message système — le client n'a rien écrit, c'est toi qui prends l'initiative] " +
     "Donne au client sa guidance du jour sur les trois fronts de son programme : combien de pas viser " +
     "aujourd'hui, quoi manger (diète), et ce qu'il doit faire côté sport (séance du jour ou repos actif) — " +
-    "en lien avec son programme et son objectif. Sois bref (4-6 phrases), concret, motivant.",
+    "en lien avec son programme et son objectif. Rappelle-lui aussi, en une phrase, de ne pas oublier de te " +
+    "dire ce qu'il mange/fait dans la journée pour que tu puisses vraiment le suivre. Sois bref (4-6 " +
+    "phrases), concret, motivant — le client n'a pas de temps à perdre, va droit au but.",
+  evening:
+    "[Message système — le client n'a rien écrit, c'est toi qui prends l'initiative] " +
+    "C'est la fin de journée : fais un micro-résumé de ce qu'il a fait aujourd'hui (repas loggés, activité, " +
+    "ressenti mentionné pendant la journée), en 2-3 phrases maximum. Termine par UNE consigne claire et " +
+    "concrète pour demain (prochaine séance, point de vigilance côté diète). Reste très court — le but est " +
+    "que ça se lise en quelques secondes.",
   weekly:
     "[Message système — le client n'a rien écrit, c'est toi qui prends l'initiative] " +
     "C'est le bilan de la semaine : demande au client une photo récente et son poids actuel pour ajuster " +
@@ -23,14 +31,23 @@ const TRIGGER_PROMPT: Record<ProactiveKind, string> = {
 
 const PUSH_SUFFIX: Record<ProactiveKind, string> = {
   daily: "guidance du jour",
+  evening: "résumé du soir",
   weekly: "bilan de la semaine",
   monthly: "bilan du mois",
 };
 
+const DATE_COLUMN: Record<ProactiveKind, string> = {
+  daily: "last_daily_at",
+  evening: "last_evening_at",
+  weekly: "last_weekly_at",
+  monthly: "last_monthly_at",
+};
+
 /**
  * Fait parler le Coach IA en premier (pas de message du client), pour la
- * guidance quotidienne / le bilan hebdo / le bilan mensuel. Appelée depuis
- * la route cron — jamais depuis le navigateur du client.
+ * guidance quotidienne / le résumé du soir / le bilan hebdo / le bilan
+ * mensuel. Appelée depuis la route cron — jamais depuis le navigateur du
+ * client.
  */
 export async function runProactiveCheckIn(
   clientId: string,
@@ -44,14 +61,14 @@ export async function runProactiveCheckIn(
   const { data: coaching } = await admin
     .from("ia_coaching")
     .select(
-      "spend_cycle, spend_limit, onboarding_done, program, ai_name, last_daily_at, last_weekly_at, last_monthly_at"
+      "spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details, last_daily_at, last_evening_at, last_weekly_at, last_monthly_at"
     )
     .eq("client_id", clientId)
     .single();
   if (!coaching) return { skipped: true, reason: "not_found" };
 
   // Onboarding pas fini : le client n'a pas encore de programme, on ne
-  // dérange pas avec une relance quotidienne/hebdo/mensuelle.
+  // dérange pas avec une relance quotidienne/soir/hebdo/mensuelle.
   if (!coaching.onboarding_done) return { skipped: true, reason: "onboarding_not_done" };
 
   if (coaching.spend_cycle >= coaching.spend_limit) return { skipped: true, reason: "limit_reached" };
@@ -61,6 +78,7 @@ export async function runProactiveCheckIn(
   const todayDate = new Date().toISOString().slice(0, 10);
   const lastRunFor: Record<ProactiveKind, string | null> = {
     daily: coaching.last_daily_at,
+    evening: coaching.last_evening_at,
     weekly: coaching.last_weekly_at,
     monthly: coaching.last_monthly_at,
   };
@@ -78,6 +96,8 @@ export async function runProactiveCheckIn(
     onboardingDone: true,
     program: (coaching.program as Record<string, unknown>) ?? {},
     aiName: coaching.ai_name,
+    objectifTags: coaching.objectif_tags,
+    objectifDetails: coaching.objectif_details,
   });
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -123,13 +143,11 @@ export async function runProactiveCheckIn(
   const todayStr = computeCycleStart(new Date());
   const sameCycle = current?.spend_cycle_start === todayStr;
 
-  const dateColumn = kind === "daily" ? "last_daily_at" : kind === "weekly" ? "last_weekly_at" : "last_monthly_at";
-
   const update: Record<string, unknown> = {
     spend_cycle: (sameCycle ? current?.spend_cycle ?? 0 : 0) + costUsd,
     spend_cycle_start: todayStr,
     spend_total: (current?.spend_total ?? 0) + costUsd,
-    [dateColumn]: todayDate,
+    [DATE_COLUMN[kind]]: todayDate,
   };
   if (program) update.program = program;
 

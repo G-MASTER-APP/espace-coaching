@@ -9,6 +9,7 @@ import { stopSpeaking } from "@/lib/jarvis/voice";
 import { IaCoachChat } from "./ia-coach-chat";
 import { IaVideoAnalyzer } from "./ia-video-analyzer";
 import { IaLiveAnalyzer } from "./ia-live-analyzer";
+import { ObjectifSelector } from "./objectif-selector";
 
 type Message = { id?: string; role: "user" | "assistant"; content: string };
 type Coaching = {
@@ -18,6 +19,8 @@ type Coaching = {
   onboarding_done: boolean;
   program: Record<string, unknown>;
   ai_name: string | null;
+  objectif_tags: string[];
+  objectif_details: string | null;
 };
 type Analysis = {
   id: string;
@@ -29,6 +32,7 @@ type Analysis = {
 
 const TABS = [
   { key: "chat", label: "Discussion" },
+  { key: "objectif", label: "Objectif" },
   { key: "video", label: "Vidéo / photo" },
   { key: "live", label: "Session live" },
 ] as const;
@@ -48,6 +52,9 @@ export function IaCoachView({
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("chat");
   const [muted, setMuted] = useState(false);
+  const [objectifTags, setObjectifTags] = useState(coaching.objectif_tags);
+  const [objectifDetails, setObjectifDetails] = useState(coaching.objectif_details ?? "");
+  const [messages, setMessages] = useState(initialMessages);
 
   function toggleMute() {
     const next = !muted;
@@ -59,6 +66,19 @@ export function IaCoachView({
     }
     if (next) stopSpeaking();
   }
+
+  function handleObjectifSaved(tags: string[], details: string, reply: string | null) {
+    setObjectifTags(tags);
+    setObjectifDetails(details);
+    if (reply) {
+      setMessages((m) => [...m, { role: "assistant", content: reply }]);
+    }
+    setTab("chat");
+  }
+
+  // Onboarding pas fini et aucun objectif choisi : on bloque sur le
+  // sélecteur avant de laisser le client discuter avec l'IA.
+  const needsObjectifFirst = !isCoachView && !coaching.onboarding_done && objectifTags.length === 0;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 px-4 py-6">
@@ -84,35 +104,56 @@ export function IaCoachView({
         }
       />
 
-      {!isCoachView && (
-        <div className="flex gap-1 rounded-full bg-secondary/60 p-1">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={cn(
-                "flex-1 rounded-full py-1.5 text-xs font-semibold transition-colors",
-                tab === t.key ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {(isCoachView || tab === "chat") && (
-        <IaCoachChat
-          clientId={clientId}
-          isCoachView={isCoachView}
-          initialMessages={initialMessages}
-          coaching={coaching}
-          muted={muted}
+      {needsObjectifFirst ? (
+        <ObjectifSelector
+          initialTags={objectifTags}
+          initialDetails={objectifDetails}
+          isOnboarding
+          onSaved={(tags, details) => {
+            setObjectifTags(tags);
+            setObjectifDetails(details);
+          }}
         />
+      ) : (
+        <>
+          {!isCoachView && (
+            <div className="flex gap-1 rounded-full bg-secondary/60 p-1">
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setTab(t.key)}
+                  className={cn(
+                    "flex-1 rounded-full py-1.5 text-xs font-semibold transition-colors",
+                    tab === t.key ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {(isCoachView || tab === "chat") && (
+            <IaCoachChat
+              clientId={clientId}
+              isCoachView={isCoachView}
+              initialMessages={messages}
+              coaching={coaching}
+              muted={muted}
+            />
+          )}
+          {!isCoachView && tab === "objectif" && (
+            <ObjectifSelector
+              initialTags={objectifTags}
+              initialDetails={objectifDetails}
+              onSaved={handleObjectifSaved}
+            />
+          )}
+          {!isCoachView && tab === "video" && <IaVideoAnalyzer clientId={clientId} muted={muted} />}
+          {!isCoachView && tab === "live" && <IaLiveAnalyzer muted={muted} />}
+        </>
       )}
-      {!isCoachView && tab === "video" && <IaVideoAnalyzer clientId={clientId} muted={muted} />}
-      {!isCoachView && tab === "live" && <IaLiveAnalyzer muted={muted} />}
 
       {analyses.length > 0 && (
         <div className="flex flex-col gap-2">

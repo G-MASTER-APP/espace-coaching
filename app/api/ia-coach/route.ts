@@ -45,7 +45,7 @@ export async function POST(request: Request) {
 
   const { data: coaching } = await supabase
     .from("ia_coaching")
-    .select("spend_cycle, spend_limit, onboarding_done, program, ai_name")
+    .select("spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details")
     .eq("client_id", user.id)
     .single();
 
@@ -80,6 +80,8 @@ export async function POST(request: Request) {
     onboardingDone: coaching.onboarding_done,
     program: (coaching.program as Record<string, unknown>) ?? {},
     aiName: coaching.ai_name,
+    objectifTags: coaching.objectif_tags,
+    objectifDetails: coaching.objectif_details,
   });
 
   try {

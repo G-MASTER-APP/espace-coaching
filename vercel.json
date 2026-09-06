@@ -1,8 +1,12 @@
 {
   "crons": [
     {
-      "path": "/api/cron/ia-coach",
+      "path": "/api/cron/ia-coach?slot=morning",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/ia-coach?slot=evening",
+      "schedule": "0 19 * * *"
     }
   ]
 }

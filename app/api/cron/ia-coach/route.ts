@@ -4,10 +4,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { runProactiveCheckIn } from "@/lib/ia-coach/proactive";
 
 /**
- * Un seul cron quotidien (au lieu de trois séparés) : Vercel Hobby limite le
- * nombre et la fréquence des crons, donc on regroupe daily/weekly/monthly
- * ici et on décide nous-mêmes, à chaque exécution, qui doit être relancé
- * aujourd'hui (dimanche = bilan hebdo, 1er du mois = bilan mensuel).
+ * Deux passages quotidiens (matin et soir), un seul point d'entrée : le
+ * paramètre ?slot= (voir vercel.json) distingue les deux, pour rester sous
+ * la limite de crons de Vercel Hobby plutôt que d'en multiplier les
+ * définitions. Le matin regroupe aussi daily/hebdo/mensuel (dimanche =
+ * bilan hebdo, 1er du mois = bilan mensuel) ; le soir ne fait que le
+ * résumé du soir.
  */
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
@@ -15,6 +17,8 @@ export async function GET(request: NextRequest) {
   if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
+
+  const slot = request.nextUrl.searchParams.get("slot") === "evening" ? "evening" : "morning";
 
   const admin = createAdminClient();
   const { data: clients } = await admin.from("profiles").select("id").eq("coaching_mode", "ia");
@@ -27,22 +31,23 @@ export async function GET(request: NextRequest) {
 
   for (const client of clients ?? []) {
     try {
-      const daily = await runProactiveCheckIn(client.id, "daily");
-      results[`${client.id}:daily`] = daily;
+      if (slot === "evening") {
+        results[`${client.id}:evening`] = await runProactiveCheckIn(client.id, "evening");
+        continue;
+      }
 
+      results[`${client.id}:daily`] = await runProactiveCheckIn(client.id, "daily");
       if (isSunday) {
-        const weekly = await runProactiveCheckIn(client.id, "weekly");
-        results[`${client.id}:weekly`] = weekly;
+        results[`${client.id}:weekly`] = await runProactiveCheckIn(client.id, "weekly");
       }
       if (isFirstOfMonth) {
-        const monthly = await runProactiveCheckIn(client.id, "monthly");
-        results[`${client.id}:monthly`] = monthly;
+        results[`${client.id}:monthly`] = await runProactiveCheckIn(client.id, "monthly");
       }
     } catch (err) {
-      console.error(`Coach IA cron error for client ${client.id}:`, err);
+      console.error(`Coach IA cron error (${slot}) for client ${client.id}:`, err);
       results[`${client.id}:error`] = { skipped: true, reason: "exception" };
     }
   }
 
-  return NextResponse.json({ ok: true, clientCount: clients?.length ?? 0, results });
+  return NextResponse.json({ ok: true, slot, clientCount: clients?.length ?? 0, results });
 }
