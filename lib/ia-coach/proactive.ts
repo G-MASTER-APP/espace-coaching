@@ -8,8 +8,9 @@ export type ProactiveKind = "daily" | "weekly" | "monthly";
 const TRIGGER_PROMPT: Record<ProactiveKind, string> = {
   daily:
     "[Message système — le client n'a rien écrit, c'est toi qui prends l'initiative] " +
-    "Donne au client sa guidance alimentaire du jour : quoi manger, dans quel esprit, en lien avec son " +
-    "programme et son objectif. Sois bref (3-5 phrases), concret, motivant.",
+    "Donne au client sa guidance du jour sur les trois fronts de son programme : combien de pas viser " +
+    "aujourd'hui, quoi manger (diète), et ce qu'il doit faire côté sport (séance du jour ou repos actif) — " +
+    "en lien avec son programme et son objectif. Sois bref (4-6 phrases), concret, motivant.",
   weekly:
     "[Message système — le client n'a rien écrit, c'est toi qui prends l'initiative] " +
     "C'est le bilan de la semaine : demande au client une photo récente et son poids actuel pour ajuster " +
