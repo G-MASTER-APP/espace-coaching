@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { Seance } from "../ia-coach/seance-player";
 import { ProgrammeView } from "./programme-view";
 
 export default async function ProgrammePage({
@@ -27,7 +28,7 @@ export default async function ProgrammePage({
   const isIaClient = target?.coaching_mode === "ia";
 
   const [{ data: program }, { data: videos }] = await Promise.all([
-    supabase.from("programs").select("id, program_url").eq("user_id", clientId).maybeSingle(),
+    supabase.from("programs").select("id, program_url, seances").eq("user_id", clientId).maybeSingle(),
     supabase
       .from("program_videos")
       .select("id, title, url, position")
@@ -69,6 +70,11 @@ export default async function ProgrammePage({
       isIaClient={isIaClient}
       iaProgram={iaProgram}
       lastPerformance={lastPerformance}
+      // Client suivi par Joris : programme structuré préparé via
+      // l'Assistant coach (brouillon validé) — affiché en lecture seule,
+      // en plus du lien Hevy/PDF (gardé) puisque ce client n'a pas
+      // l'interface interactive séance par séance de Coach IA.
+      humanSeances={!isIaClient ? ((program?.seances as Seance[]) ?? []) : []}
     />
   );
 }

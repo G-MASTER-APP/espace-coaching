@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { VideoCard } from "@/components/video-card";
 import { AddButton } from "@/components/add-button";
-import { SeanceTab } from "../ia-coach/seance-tab";
+import { SeanceTab, CardioCard } from "../ia-coach/seance-tab";
+import type { Seance } from "../ia-coach/seance-player";
 
 type VideoRow = { id: string; title: string; url: string; position: number };
 
@@ -24,6 +25,7 @@ export function ProgrammeView({
   isIaClient,
   iaProgram,
   lastPerformance,
+  humanSeances,
 }: {
   clientId: string;
   isCoach: boolean;
@@ -33,6 +35,7 @@ export function ProgrammeView({
   isIaClient?: boolean;
   iaProgram?: Record<string, unknown>;
   lastPerformance?: Record<string, { poids_kg: number; repetitions: number }[]>;
+  humanSeances?: Seance[];
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [programId, setProgramId] = useState(initialProgramId);
@@ -157,6 +160,31 @@ export function ProgrammeView({
             </a>
           ) : (
             <p className="text-sm text-muted-foreground">Pas encore de programme partagé.</p>
+          )}
+
+          {humanSeances && humanSeances.length > 0 && (
+            <div className="mt-2 flex flex-col gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Séances préparées par ton coach
+              </p>
+              {humanSeances.map((s, i) =>
+                s.cardio ? (
+                  <CardioCard key={s.nom + i} seance={s} />
+                ) : (
+                  <div key={s.nom + i} className="rounded-xl border border-border bg-card p-4">
+                    <p className="text-sm font-semibold text-foreground">{s.nom}</p>
+                    <div className="mt-2 flex flex-col gap-1.5">
+                      {(s.exercices ?? []).map((ex, exi) => (
+                        <p key={exi} className="text-xs text-muted-foreground">
+                          {ex.nom} — {ex.series.length} série{ex.series.length > 1 ? "s" : ""}
+                          {ex.series[0] ? ` (${ex.series[0].poids_kg}kg x${ex.series[0].repetitions})` : ""}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
           )}
         </section>
       )}

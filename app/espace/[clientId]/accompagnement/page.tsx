@@ -96,6 +96,14 @@ export default async function AccompagnementPage({
     .eq("user_id", clientId)
     .eq("log_date", today);
 
+  // Objectif d'un client suivi par Joris (pas Coach IA) : fixé via
+  // l'Assistant coach, affiché ici en lecture seule pour le client.
+  const { data: clientObjectif } = await supabase
+    .from("client_objectifs")
+    .select("tags, details")
+    .eq("user_id", clientId)
+    .maybeSingle();
+
   // Forfait : cycle fixe de 3 mois démarré par le coach (package_start_date),
   // pas calé sur la semaine/le mois civil. Total EXCLUANT aujourd'hui : le
   // compteur affiché dérive ensuite comme `otherDaysTotal +
@@ -131,6 +139,8 @@ export default async function AccompagnementPage({
       nutritionGoals={nutritionGoals ?? null}
       initialFoodEntries={foodEntries ?? []}
       hideForfait={hideForfait}
+      objectifTags={clientObjectif?.tags ?? []}
+      objectifDetails={clientObjectif?.details ?? null}
     />
   );
 }

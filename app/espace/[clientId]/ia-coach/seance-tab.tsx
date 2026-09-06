@@ -100,7 +100,9 @@ export function SeanceTab({
 // Une séance cardio (course, vélo, natation...) n'a pas de séries
 // poids/répétitions à suivre exercice par exercice — juste une présentation
 // claire des chiffres clés (distance, durée, allure) et de la description.
-function CardioCard({ seance }: { seance: Seance }) {
+// Exporté : réutilisé tel quel pour l'affichage lecture seule du programme
+// d'un client suivi par le coach humain (app/espace/[clientId]/programme).
+export function CardioCard({ seance }: { seance: Seance }) {
   const c = seance.cardio!;
   const stats = [
     c.distance_km ? { label: "Distance", value: `${c.distance_km} km` } : null,

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/(auth)/actions";
@@ -51,11 +52,18 @@ export default async function DashboardPage() {
         eyebrow="Espace Coaching"
         title="Mes clients"
         action={
-          <form action={logout}>
-            <Button type="submit" variant="ghost" size="sm">
-              Déconnexion
-            </Button>
-          </form>
+          <div className="flex items-center gap-1">
+            <Link href="/dashboard/assistant">
+              <Button type="button" variant="ghost" size="sm">
+                🗂️ Assistant
+              </Button>
+            </Link>
+            <form action={logout}>
+              <Button type="submit" variant="ghost" size="sm">
+                Déconnexion
+              </Button>
+            </form>
+          </div>
         }
       />
       <ClientList clients={clientsWithIa} />

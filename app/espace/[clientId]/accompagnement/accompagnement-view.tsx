@@ -63,6 +63,8 @@ export function AccompagnementView({
   nutritionGoals: initialNutritionGoals,
   initialFoodEntries,
   hideForfait,
+  objectifTags: initialObjectifTags,
+  objectifDetails: initialObjectifDetails,
 }: {
   clientId: string;
   isCoach: boolean;
@@ -73,12 +75,18 @@ export function AccompagnementView({
   nutritionGoals: NutritionGoals | null;
   initialFoodEntries: FoodEntry[];
   hideForfait?: boolean;
+  objectifTags?: string[];
+  objectifDetails?: string | null;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [goals, setGoals] = useState(initialGoals);
   const [dailyLog, setDailyLog] = useState(initialDailyLog);
   const [nutritionGoals, setNutritionGoals] = useState(initialNutritionGoals);
   const [foodEntries, setFoodEntries] = useState<FoodEntry[]>(initialFoodEntries);
+  const [objectif, setObjectif] = useState({
+    tags: initialObjectifTags ?? [],
+    details: initialObjectifDetails ?? null,
+  });
   const [goalsSaveStatus, setGoalsSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [logSaveStatus, setLogSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   // Total de période = jours précédents (fixe, calculé côté serveur) +
@@ -126,6 +134,15 @@ export function AccompagnementView({
         (payload) => {
           if (payload.eventType === "DELETE") return;
           setNutritionGoals(payload.new as NutritionGoals);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "client_objectifs", filter: `user_id=eq.${clientId}` },
+        (payload) => {
+          if (payload.eventType === "DELETE") return;
+          const row = payload.new as { tags: string[]; details: string | null };
+          setObjectif({ tags: row.tags ?? [], details: row.details ?? null });
         }
       )
       .on(
@@ -206,6 +223,16 @@ export function AccompagnementView({
           />
         }
       />
+
+      {objectif.tags.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-foreground">Objectif</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {objectif.tags.join(", ")}
+            {objectif.details ? ` — ${objectif.details}` : ""}
+          </p>
+        </div>
+      )}
 
       {!goals ? (
         <p className="text-sm text-muted-foreground">
