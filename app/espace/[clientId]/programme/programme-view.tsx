@@ -40,6 +40,7 @@ export function ProgrammeView({
   const supabase = useMemo(() => createClient(), []);
   const [programId, setProgramId] = useState(initialProgramId);
   const [programUrl, setProgramUrl] = useState(initialProgramUrl);
+  const [seances, setSeances] = useState(humanSeances ?? []);
   const [programSaveStatus, setProgramSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [videos, setVideos] = useState<VideoRow[]>(initialVideos);
   const [newTitle, setNewTitle] = useState("");
@@ -54,9 +55,10 @@ export function ProgrammeView({
         { event: "*", schema: "public", table: "programs", filter: `user_id=eq.${clientId}` },
         (payload) => {
           if (payload.eventType === "DELETE") return;
-          const row = payload.new as { id: string; program_url: string | null };
+          const row = payload.new as { id: string; program_url: string | null; seances: Seance[] | null };
           setProgramId(row.id);
           setProgramUrl(row.program_url ?? "");
+          setSeances(row.seances ?? []);
         }
       )
       .on(
@@ -162,12 +164,12 @@ export function ProgrammeView({
             <p className="text-sm text-muted-foreground">Pas encore de programme partagé.</p>
           )}
 
-          {humanSeances && humanSeances.length > 0 && (
+          {seances.length > 0 && (
             <div className="mt-2 flex flex-col gap-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Séances préparées par ton coach
               </p>
-              {humanSeances.map((s, i) =>
+              {seances.map((s, i) =>
                 s.cardio ? (
                   <CardioCard key={s.nom + i} seance={s} />
                 ) : (

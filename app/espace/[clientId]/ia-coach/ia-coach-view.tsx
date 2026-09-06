@@ -79,6 +79,11 @@ export function IaCoachView({
   const [antecedentsDetails, setAntecedentsDetails] = useState(coaching.antecedents_details ?? "");
   const [activiteTags, setActiviteTags] = useState(coaching.activite_tags);
   const [buildingProgram, setBuildingProgram] = useState(false);
+  // "coaching" est une prop figée depuis le chargement de la page — sans cet
+  // état local, la bannière "on construit ton programme" et le brief bilan
+  // restaient affichés/masqués à tort jusqu'à un rechargement, même une fois
+  // le programme réellement construit dans la même session.
+  const [onboardingDone, setOnboardingDone] = useState(coaching.onboarding_done);
   const [messages, setMessages] = useState(initialMessages);
   const [bilanDone, setBilanDone] = useState(hasBilan);
   const [bilanDismissed, setBilanDismissed] = useState(() => {
@@ -149,6 +154,7 @@ export function IaCoachView({
   function handleActiviteSaved(tags: string[], _details: string, reply: string | null) {
     setActiviteTags(tags);
     setBuildingProgram(false);
+    setOnboardingDone(true);
     if (reply) {
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
     }
@@ -183,7 +189,7 @@ export function IaCoachView({
     activiteTags.length === 0;
   // Onboarding fini mais aucun bilan de départ : proposé (jamais bloquant,
   // le client peut le repousser à plus tard).
-  const showBilanPrompt = !isCoachView && coaching.onboarding_done && !bilanDone && !bilanDismissed;
+  const showBilanPrompt = !isCoachView && onboardingDone && !bilanDone && !bilanDismissed;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 px-4 py-6">
@@ -314,8 +320,9 @@ export function IaCoachView({
               clientId={clientId}
               isCoachView={isCoachView}
               initialMessages={messages}
-              coaching={coaching}
+              coaching={{ ...coaching, onboarding_done: onboardingDone }}
               muted={muted}
+              onOnboardingDone={() => setOnboardingDone(true)}
             />
           )}
           {!isCoachView && tab === "seance" && (

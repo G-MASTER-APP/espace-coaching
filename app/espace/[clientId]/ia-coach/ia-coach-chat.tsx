@@ -23,12 +23,17 @@ export function IaCoachChat({
   initialMessages,
   coaching,
   muted,
+  onOnboardingDone,
 }: {
   clientId: string;
   isCoachView: boolean;
   initialMessages: Message[];
   coaching: Coaching;
   muted: boolean;
+  // La réponse peut faire passer onboarding_done à true (le programme
+  // vient d'être construit) — sans ça, la bannière "on construit ton
+  // programme" et le brief bilan restaient figés jusqu'au rechargement.
+  onOnboardingDone?: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [textInput, setTextInput] = useState("");
@@ -94,12 +99,13 @@ export function IaCoachChat({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: trimmed }),
       });
-      const data = (await res.json()) as { reply?: string; error?: string };
+      const data = (await res.json()) as { reply?: string; error?: string; onboardingDone?: boolean };
       if (!res.ok || !data.reply) {
         setErrorMsg(data.error ?? "Le Coach IA n'a pas pu répondre.");
         return;
       }
       setMessages((m) => [...m, { role: "assistant", content: data.reply! }]);
+      if (data.onboardingDone && !coaching.onboarding_done) onOnboardingDone?.();
       if (!muted) speak(data.reply, voiceRef.current);
     } catch {
       setErrorMsg("Connexion impossible — réessaie.");

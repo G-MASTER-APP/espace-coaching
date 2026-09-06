@@ -9,6 +9,8 @@ type ApplyBody = {
   draft?: unknown;
 };
 
+const DIETE_KEYS = ["calories_target", "protein_target_g", "carbs_target_g", "fat_target_g"] as const;
+
 export async function POST(request: Request) {
   const { clientId, kind, draft } = (await request.json()) as ApplyBody;
   if (!clientId || !kind || draft === undefined) {
@@ -43,7 +45,13 @@ export async function POST(request: Request) {
       : await supabase.from("programs").insert({ user_id: clientId, seances: draft });
     if (error) return NextResponse.json({ error: "Impossible d'appliquer le programme." }, { status: 500 });
   } else if (kind === "diete") {
-    const patch = draft as Record<string, unknown>;
+    const raw = draft as Record<string, unknown>;
+    const patch = Object.fromEntries(
+      DIETE_KEYS.filter((k) => typeof raw[k] === "number").map((k) => [k, raw[k]])
+    );
+    if (Object.keys(patch).length === 0) {
+      return NextResponse.json({ error: "Diète invalide." }, { status: 400 });
+    }
     const { error } = await supabase.from("nutrition_goals").update(patch).eq("user_id", clientId);
     if (error) return NextResponse.json({ error: "Impossible d'appliquer la diète." }, { status: 500 });
   } else if (kind === "objectif") {
