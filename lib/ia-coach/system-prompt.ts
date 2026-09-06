@@ -171,17 +171,29 @@ export function buildSystemPrompt({
     "bloc est invisible pour le client, ne le mentionne jamais et ne le montre pas dans ta réponse visible.";
 
   const seancesInstruction =
-    "\n\nSÉANCES STRUCTURÉES — en plus du texte libre de \"planning_semaine\", décris CHAQUE séance de sport " +
-    "de façon structurée (comme une appli de suivi de musculation type Hevy), pour que le client puisse la " +
-    "suivre exercice par exercice pendant qu'il s'entraîne : pour chaque exercice, le nombre de séries, et " +
+    "\n\nSÉANCES STRUCTURÉES — en plus du texte libre de \"planning_semaine\", décris CHAQUE séance prévue " +
+    "dans la clé \"seances\" du programme (un objet par séance), pour que le client la retrouve avec une " +
+    "présentation adaptée dans son onglet Séance/Programme — MÊME quand son sport n'est pas de la " +
+    "musculation. Deux formats, à choisir selon le type de séance (ne laisse JAMAIS \"seances\" vide sous " +
+    "prétexte que le sport n'est pas de la musculation) :\n" +
+    "1) MUSCULATION / RENFORCEMENT (charges) — comme une appli de suivi type Hevy, pour que le client la " +
+    "suive exercice par exercice pendant qu'il s'entraîne : pour chaque exercice, le nombre de séries, et " +
     "pour CHAQUE série un poids cible (kg, 0 si poids du corps) et un nombre de répétitions cible, plus un " +
-    "temps de repos en secondes entre les séries de cet exercice. Mets ça dans la clé \"seances\" du " +
-    "programme, un objet par séance de la semaine, format EXACT :\n" +
-    '[{"nom": "Push", "exercices": [{"nom": "Développé couché", "series": [{"poids_kg": 20, "repetitions": 10}, ' +
-    '{"poids_kg": 20, "repetitions": 10}], "repos_secondes": 90}]}]\n' +
-    "Adapte les charges à ce que tu sais du client (débutant = charges légères) — le client pourra de toute " +
-    "façon ajuster ce qu'il a réellement fait pendant la séance, ce n'est pas grave si l'estimation n'est " +
-    "pas parfaite.";
+    "temps de repos en secondes. Format EXACT :\n" +
+    '{"nom": "Push", "exercices": [{"nom": "Développé couché", "series": [{"poids_kg": 20, "repetitions": 10}, ' +
+    '{"poids_kg": 20, "repetitions": 10}], "repos_secondes": 90}]}\n' +
+    "2) CARDIO / ENDURANCE (course, vélo, natation, sports co...) — pas de séries poids/répétitions, ça n'a " +
+    "aucun sens ici. Utilise une clé \"cardio\" à la place : activité, durée et/ou distance, allure ou " +
+    "intensité cible, et une description libre (échauffement, fractionné, récupération...). Format EXACT :\n" +
+    '{"nom": "Fractionné VMA", "cardio": {"activite": "Course à pied", "duree_minutes": 45, "distance_km": 8, ' +
+    '"allure_cible": "4:30/km sur les efforts", "description": "15 min échauffement souple, 8x(400m rapide / ' +
+    '200m récupération trot), 10 min retour au calme."}}\n' +
+    "Une séance a soit \"exercices\" (format 1), soit \"cardio\" (format 2), jamais aucun des deux vide. " +
+    "Choisis le format selon le sport concerné : un client qui ne fait QUE de la course n'a que des séances " +
+    "cardio ; un client en musculation n'a que des séances avec exercices ; un programme mixte peut avoir " +
+    "les deux types de séances dans le même tableau \"seances\". Adapte les charges/allures à ce que tu sais " +
+    "du client (débutant = charges légères / allure prudente) — le client pourra de toute façon ajuster ce " +
+    "qu'il a réellement fait, ce n'est pas grave si l'estimation n'est pas parfaite.";
 
   const alertInstruction =
     "\n\nALERTE COACH — si le client mentionne une douleur ou blessure qui nécessite un avis humain, un " +

@@ -9,7 +9,16 @@ type PrescribedSerie = { poids_kg: number; repetitions: number };
 type Serie = { poids_kg: number | null; repetitions: number | null; done?: boolean };
 type Exercice = { nom: string; series: PrescribedSerie[]; repos_secondes?: number };
 type LiveExercice = { nom: string; series: Serie[]; repos_secondes?: number };
-export type Seance = { nom: string; exercices: Exercice[] };
+export type CardioSeance = {
+  activite: string;
+  duree_minutes?: number;
+  distance_km?: number;
+  allure_cible?: string;
+  description?: string;
+};
+// Une séance a soit "exercices" (musculation, façon Hevy), soit "cardio"
+// (course, vélo... — les séries poids/répétitions n'ont pas de sens là).
+export type Seance = { nom: string; exercices?: Exercice[]; cardio?: CardioSeance };
 type Recap = { totalSets: number; totalVolumeKg: number; exercisesCount: number };
 type LastPerformance = Record<string, PrescribedSerie[]>;
 
@@ -29,7 +38,7 @@ export function SeancePlayer({
   // sinon elle démarre pré-remplie avec ce que l'IA a prescrit, pour ne
   // pas laisser un client sans aucun repère la toute première fois.
   const [exercices, setExercices] = useState<LiveExercice[]>(() =>
-    seance.exercices.map((ex) => {
+    (seance.exercices ?? []).map((ex) => {
       const hasHistory = Boolean(lastPerformance[ex.nom]?.length);
       return {
         ...ex,
@@ -98,7 +107,7 @@ export function SeancePlayer({
           exercices: exercices.map((ex, exIdx) => ({
             nom: ex.nom,
             series: ex.series.map((s, serieIdx) => {
-              const fallback = placeholderFor(ex.nom, serieIdx, seance.exercices[exIdx].series[serieIdx]);
+              const fallback = placeholderFor(ex.nom, serieIdx, seance.exercices![exIdx].series[serieIdx]);
               return {
                 poids_kg: s.poids_kg ?? fallback.poids_kg,
                 repetitions: s.repetitions ?? fallback.repetitions,
@@ -142,7 +151,7 @@ export function SeancePlayer({
               <span className="text-muted-foreground">Répétitions</span>
               <span />
               {ex.series.map((s, serieIdx) => {
-                const ph = placeholderFor(ex.nom, serieIdx, seance.exercices[exIdx].series[serieIdx]);
+                const ph = placeholderFor(ex.nom, serieIdx, seance.exercices![exIdx].series[serieIdx]);
                 return (
                   <FragmentRow
                     key={serieIdx}
