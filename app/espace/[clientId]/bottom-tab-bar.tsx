@@ -17,9 +17,20 @@ const TABS = [
 
 const IA_COACH_TAB = { key: "ia-coach", label: "Coach IA", icon: Bot } as const;
 
-export function BottomTabBar({ clientId, showIaCoachTab }: { clientId: string; showIaCoachTab?: boolean }) {
+export function BottomTabBar({
+  clientId,
+  showIaCoachTab,
+  iaExclusive,
+}: {
+  clientId: string;
+  showIaCoachTab?: boolean;
+  // Client suivi par le Coach IA (pas le coach en train de le consulter) :
+  // tout (programme, diète, suivi, forfait...) vit dans l'onglet Coach IA,
+  // les anciens onglets pensés pour un coach humain n'ont plus leur place.
+  iaExclusive?: boolean;
+}) {
   const pathname = usePathname();
-  const tabs = showIaCoachTab ? [...TABS, IA_COACH_TAB] : TABS;
+  const tabs = iaExclusive ? [IA_COACH_TAB] : showIaCoachTab ? [...TABS, IA_COACH_TAB] : TABS;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur">

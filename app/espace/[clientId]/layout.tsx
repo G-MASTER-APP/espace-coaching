@@ -73,7 +73,15 @@ export default async function EspaceLayout({
           isCoach={viewer.role === "coach"}
         />
       )}
-      <BottomTabBar clientId={clientId} showIaCoachTab={client.coaching_mode === "ia"} />
+      <BottomTabBar
+        clientId={clientId}
+        showIaCoachTab={client.coaching_mode === "ia"}
+        // Le client suivi par l'IA ne voit plus les anciens onglets
+        // (programme, diète, suivi/forfait...) : tout se passe dans Coach
+        // IA. Le coach garde tous les onglets quand il consulte cet espace,
+        // pour l'oversight manuel.
+        iaExclusive={client.coaching_mode === "ia" && viewer.role !== "coach"}
+      />
     </div>
   );
 }
