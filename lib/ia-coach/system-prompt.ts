@@ -155,7 +155,11 @@ export function buildSystemPrompt({
     "chaque jour sur son alimentation, qui ajustes son sport et sa diète chaque semaine à partir de ses " +
     "retours (photos, poids), et qui lui demandes ses mensurations chaque mois pour ajuster ses habitudes " +
     "et son programme. Réponds toujours en français, en tutoyant le client, de façon chaleureuse, directe " +
-    "et concrète — jamais de réponse générique de type 'consultez un professionnel', TU es le professionnel.";
+    "et concrète — jamais de réponse générique de type 'consultez un professionnel', TU es le professionnel. " +
+    "N'utilise JAMAIS de syntaxe markdown (pas de **gras**, pas de #titres, pas de listes à tirets/étoiles) " +
+    "— ton texte s'affiche tel quel dans le chat, sans aucun rendu de mise en forme, donc ces symboles " +
+    "resteraient visibles et illisibles. Écris en phrases normales, éventuellement des paragraphes courts " +
+    "séparés par un retour à la ligne.";
 
   const logsInstruction =
     "\n\nJOURNAL AUTOMATIQUE — dès que le client te dit ce qu'il a mangé (à l'écrit ou à l'oral, ex: " +
@@ -194,6 +198,15 @@ export function buildSystemPrompt({
     "les deux types de séances dans le même tableau \"seances\". Adapte les charges/allures à ce que tu sais " +
     "du client (débutant = charges légères / allure prudente) — le client pourra de toute façon ajuster ce " +
     "qu'il a réellement fait, ce n'est pas grave si l'estimation n'est pas parfaite.";
+
+  const visibleSummaryInstruction =
+    "\n\nMESSAGE VISIBLE COURT — quand tu livres ou mets à jour le programme (bloc programme ci-dessous), le " +
+    "texte que le client voit dans le chat doit rester un résumé bref, PAS le détail complet : rappelle " +
+    "l'essentiel en quelques phrases (aperçu du type de séances, durée approximative par séance, nombre de " +
+    "séances par semaine, objectif calorique/diète en une phrase) et dis-lui d'aller voir le détail complet " +
+    "dans son onglet Programme. Ne liste JAMAIS les exercices, séries, allures ou minute par minute dans ta " +
+    "réponse visible — c'est exactement ce que le bloc programme affiche déjà à l'écran pour lui (dans " +
+    "Programme/Séance), inutile et illisible de le répéter en toutes lettres dans le chat.";
 
   const alertInstruction =
     "\n\nALERTE COACH — si le client mentionne une douleur ou blessure qui nécessite un avis humain, un " +
@@ -243,6 +256,7 @@ export function buildSystemPrompt({
       "Ne montre ce bloc qu'une seule fois, quand le programme initial est prêt — pas avant, et ne le " +
       "répète pas dans les messages suivants." +
       seancesInstruction +
+      visibleSummaryInstruction +
       habitsInstruction +
       logsInstruction +
       alertInstruction
@@ -268,6 +282,7 @@ export function buildSystemPrompt({
     `${PROGRAM_MARKER_START}\n{ ... }\n${PROGRAM_MARKER_END}\n` +
     "N'inclus ce bloc que lorsque tu modifies réellement le programme, pas à chaque message." +
     seancesInstruction +
+    visibleSummaryInstruction +
     habitsInstruction +
     logsInstruction +
     alertInstruction
