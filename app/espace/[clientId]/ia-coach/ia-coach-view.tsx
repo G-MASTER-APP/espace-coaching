@@ -10,6 +10,7 @@ import { IaCoachChat } from "./ia-coach-chat";
 import { IaVideoAnalyzer } from "./ia-video-analyzer";
 import { IaLiveAnalyzer } from "./ia-live-analyzer";
 import { ObjectifSelector } from "./objectif-selector";
+import { AiNameStep } from "./ai-name-step";
 import { PremierBilanPrompt } from "./premier-bilan-prompt";
 import { SeanceTab } from "./seance-tab";
 
@@ -59,6 +60,7 @@ export function IaCoachView({
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("chat");
   const [muted, setMuted] = useState(false);
+  const [aiName, setAiName] = useState(coaching.ai_name);
   const [objectifTags, setObjectifTags] = useState(coaching.objectif_tags);
   const [objectifDetails, setObjectifDetails] = useState(coaching.objectif_details ?? "");
   const [messages, setMessages] = useState(initialMessages);
@@ -114,9 +116,12 @@ export function IaCoachView({
     applyObjectifUpdate(tags, details, reply);
   }
 
+  // Avant même l'objectif : le client choisit le nom de son IA.
+  const needsNameFirst = !isCoachView && !coaching.onboarding_done && !aiName;
   // Onboarding pas fini et aucun objectif choisi : on bloque sur le
   // sélecteur avant de laisser le client discuter avec l'IA.
-  const needsObjectifFirst = !isCoachView && !coaching.onboarding_done && objectifTags.length === 0;
+  const needsObjectifFirst =
+    !isCoachView && !coaching.onboarding_done && !needsNameFirst && objectifTags.length === 0;
   // Onboarding fini mais aucun bilan de départ : proposé (jamais bloquant,
   // le client peut le repousser à plus tard).
   const showBilanPrompt = !isCoachView && coaching.onboarding_done && !bilanDone && !bilanDismissed;
@@ -130,7 +135,7 @@ export function IaCoachView({
             ? `Vue coach — lecture seule${coaching.ai_name ? ` (surnommé "${coaching.ai_name}")` : ""}`
             : "Ton coach, disponible 24/7"
         }
-        title={isCoachView ? "Coach IA" : coaching.ai_name || "Coach IA"}
+        title={isCoachView ? "Coach IA" : aiName || "Coach IA"}
         action={
           !isCoachView && (
             <button
@@ -145,7 +150,9 @@ export function IaCoachView({
         }
       />
 
-      {needsObjectifFirst ? (
+      {needsNameFirst ? (
+        <AiNameStep onSaved={setAiName} />
+      ) : needsObjectifFirst ? (
         <ObjectifSelector
           initialTags={objectifTags}
           initialDetails={objectifDetails}
