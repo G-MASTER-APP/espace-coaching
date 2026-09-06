@@ -11,6 +11,7 @@ import { IaVideoAnalyzer } from "./ia-video-analyzer";
 import { IaLiveAnalyzer } from "./ia-live-analyzer";
 import { ObjectifSelector } from "./objectif-selector";
 import { PremierBilanPrompt } from "./premier-bilan-prompt";
+import { SeanceTab } from "./seance-tab";
 
 type Message = { id?: string; role: "user" | "assistant"; content: string };
 type Coaching = {
@@ -33,6 +34,7 @@ type Analysis = {
 
 const TABS = [
   { key: "chat", label: "Discussion" },
+  { key: "seance", label: "Séance" },
   { key: "objectif", label: "Objectif" },
   { key: "video", label: "Vidéo / photo" },
   { key: "live", label: "Session live" },
@@ -187,6 +189,7 @@ export function IaCoachView({
               muted={muted}
             />
           )}
+          {!isCoachView && tab === "seance" && <SeanceTab program={coaching.program} />}
           {!isCoachView && tab === "objectif" && (
             <ObjectifSelector
               initialTags={objectifTags}

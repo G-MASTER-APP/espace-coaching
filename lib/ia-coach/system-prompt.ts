@@ -86,6 +86,19 @@ export function buildSystemPrompt({
     "du tout. Choisis le repas (meal) selon le moment de la journée si le client ne le précise pas. Ce " +
     "bloc est invisible pour le client, ne le mentionne jamais et ne le montre pas dans ta réponse visible.";
 
+  const seancesInstruction =
+    "\n\nSÉANCES STRUCTURÉES — en plus du texte libre de \"planning_semaine\", décris CHAQUE séance de sport " +
+    "de façon structurée (comme une appli de suivi de musculation type Hevy), pour que le client puisse la " +
+    "suivre exercice par exercice pendant qu'il s'entraîne : pour chaque exercice, le nombre de séries, et " +
+    "pour CHAQUE série un poids cible (kg, 0 si poids du corps) et un nombre de répétitions cible, plus un " +
+    "temps de repos en secondes entre les séries de cet exercice. Mets ça dans la clé \"seances\" du " +
+    "programme, un objet par séance de la semaine, format EXACT :\n" +
+    '[{"nom": "Push", "exercices": [{"nom": "Développé couché", "series": [{"poids_kg": 20, "repetitions": 10}, ' +
+    '{"poids_kg": 20, "repetitions": 10}], "repos_secondes": 90}]}]\n' +
+    "Adapte les charges à ce que tu sais du client (débutant = charges légères) — le client pourra de toute " +
+    "façon ajuster ce qu'il a réellement fait pendant la séance, ce n'est pas grave si l'estimation n'est " +
+    "pas parfaite.";
+
   const alertInstruction =
     "\n\nALERTE COACH — si le client mentionne une douleur ou blessure qui nécessite un avis humain, un " +
     "signal alimentaire préoccupant (restriction excessive, compulsions...), une détresse psychologique, " +
@@ -114,10 +127,11 @@ export function buildSystemPrompt({
       "Pour livrer/mettre à jour le programme, termine ta réponse — après ton message normal au client — " +
       "par un bloc EXACTEMENT sous cette forme, " +
       `sans rien avant ni après sur ces lignes-là :\n${PROGRAM_MARKER_START}\n{"objectif": "...", "niveau": "...", ` +
-      '"taille_cm": 0, "poids_kg": 0, "sports": ["..."], "planning_semaine": "...", "diete": "...", ' +
-      `"habitudes": ["..."]}\n${PROGRAM_MARKER_END}\n` +
+      '"taille_cm": 0, "poids_kg": 0, "sports": ["..."], "planning_semaine": "...", "seances": [...], ' +
+      `"diete": "...", "habitudes": ["..."]}\n${PROGRAM_MARKER_END}\n` +
       "Ne montre ce bloc qu'une seule fois, quand le programme initial est prêt — pas avant, et ne le " +
       "répète pas dans les messages suivants." +
+      seancesInstruction +
       logsInstruction +
       alertInstruction
     );
@@ -137,6 +151,7 @@ export function buildSystemPrompt({
     `et à jour (toutes les clés, pas seulement celles qui changent) dans le même format que l'onboarding :\n` +
     `${PROGRAM_MARKER_START}\n{ ... }\n${PROGRAM_MARKER_END}\n` +
     "N'inclus ce bloc que lorsque tu modifies réellement le programme, pas à chaque message." +
+    seancesInstruction +
     logsInstruction +
     alertInstruction
   );
