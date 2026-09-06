@@ -248,9 +248,12 @@ export function IaCoachView({
           <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
             <Loader2 className="size-8 animate-spin text-primary" />
             <p className="text-sm font-semibold text-foreground">
-              Ton Coach IA prépare ton programme et tes habitudes...
+              Ton Coach IA construit ton programme et tes objectifs du jour...
             </p>
-            <p className="text-xs text-muted-foreground">Ça prend quelques secondes.</p>
+            <p className="max-w-xs text-xs text-muted-foreground">
+              Une première base, déjà adaptée à tes réponses — parle-lui ensuite dans le chat pour qu&apos;il
+              l&apos;affine précisément à toi.
+            </p>
           </div>
         ) : (
           <OnboardingChecklistStep
