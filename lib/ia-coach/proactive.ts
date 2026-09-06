@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeCostUsd, computeCycleStart } from "@/lib/ia-coach/pricing";
 import { buildSystemPrompt, extractStructuredBlocks } from "@/lib/ia-coach/system-prompt";
+import { applyExtractedHabits } from "@/lib/ia-coach/apply-habits";
 import { sendPushToUser } from "@/lib/push/send";
 
 export type ProactiveKind = "daily" | "evening" | "weekly" | "monthly";
@@ -61,11 +62,24 @@ export async function runProactiveCheckIn(
   const { data: coaching } = await admin
     .from("ia_coaching")
     .select(
-      "spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details, sport_tags, sport_details, antecedents_tags, antecedents_details, last_daily_at, last_evening_at, last_weekly_at, last_monthly_at"
+      "spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details, sport_tags, sport_details, antecedents_tags, antecedents_details, activite_tags, activite_details, last_daily_at, last_evening_at, last_weekly_at, last_monthly_at"
     )
     .eq("client_id", clientId)
     .single();
   if (!coaching) return { skipped: true, reason: "not_found" };
+
+  const [{ data: dailyGoals }, { data: nutritionGoals }] = await Promise.all([
+    admin
+      .from("coaching_goals")
+      .select("steps_target, water_target_l, sleep_target_h")
+      .eq("user_id", clientId)
+      .maybeSingle(),
+    admin
+      .from("nutrition_goals")
+      .select("calories_target, protein_target_g, carbs_target_g, fat_target_g")
+      .eq("user_id", clientId)
+      .maybeSingle(),
+  ]);
 
   // Onboarding pas fini : le client n'a pas encore de programme, on ne
   // dérange pas avec une relance quotidienne/soir/hebdo/mensuelle.
@@ -102,6 +116,9 @@ export async function runProactiveCheckIn(
     sportDetails: coaching.sport_details,
     antecedentsTags: coaching.antecedents_tags,
     antecedentsDetails: coaching.antecedents_details,
+    activiteTags: coaching.activite_tags,
+    activiteDetails: coaching.activite_details,
+    currentGoals: { ...dailyGoals, ...nutritionGoals },
   });
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -129,7 +146,8 @@ export async function runProactiveCheckIn(
 
   const data = await response.json();
   const rawText: string = data.content?.find((c: { type: string }) => c.type === "text")?.text ?? "";
-  const { displayText, program } = extractStructuredBlocks(rawText);
+  const { displayText, program, habits } = extractStructuredBlocks(rawText);
+  await applyExtractedHabits(admin, clientId, habits);
 
   if (displayText) {
     await admin.from("ia_messages").insert({ client_id: clientId, role: "assistant", content: displayText });

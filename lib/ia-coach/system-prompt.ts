@@ -6,6 +6,18 @@ export const ALERT_MARKER_START = "<<<ALERTE_COACH>>>";
 export const ALERT_MARKER_END = "<<<FIN_ALERTE_COACH>>>";
 export const NAME_MARKER_START = "<<<NOM_IA>>>";
 export const NAME_MARKER_END = "<<<FIN_NOM_IA>>>";
+export const HABITS_MARKER_START = "<<<HABITUDES_JSON>>>";
+export const HABITS_MARKER_END = "<<<FIN_HABITUDES_JSON>>>";
+
+export type ExtractedHabits = {
+  steps_target?: number;
+  water_target_l?: number;
+  sleep_target_h?: number;
+  calories_target?: number;
+  protein_target_g?: number;
+  carbs_target_g?: number;
+  fat_target_g?: number;
+};
 
 export type ExtractedLogs = {
   food?: {
@@ -38,6 +50,9 @@ export function buildSystemPrompt({
   sportDetails,
   antecedentsTags,
   antecedentsDetails,
+  activiteTags,
+  activiteDetails,
+  currentGoals,
 }: {
   onboardingDone: boolean;
   program: Record<string, unknown>;
@@ -48,6 +63,19 @@ export function buildSystemPrompt({
   sportDetails?: string | null;
   antecedentsTags?: string[] | null;
   antecedentsDetails?: string | null;
+  activiteTags?: string[] | null;
+  activiteDetails?: string | null;
+  // Objectifs quotidiens actuels (table coaching_goals / nutrition_goals) —
+  // fournis pour que l'IA sache ce qu'elle ajuste, pas pour qu'elle devine.
+  currentGoals?: {
+    steps_target?: number | null;
+    water_target_l?: number | null;
+    sleep_target_h?: number | null;
+    calories_target?: number | null;
+    protein_target_g?: number | null;
+    carbs_target_g?: number | null;
+    fat_target_g?: number | null;
+  } | null;
 }): string {
   const name = aiName?.trim();
   const identity = name
@@ -88,6 +116,37 @@ export function buildSystemPrompt({
       " Tiens-en compte IMPÉRATIVEMENT dans le programme : évite ou adapte tout exercice qui aggraverait ce " +
       "qui est signalé ici."
     : "";
+
+  const acTags = activiteTags?.filter(Boolean) ?? [];
+  const acDetails = activiteDetails?.trim();
+  const activiteContext = acTags.length
+    ? `\n\nNiveau d'activité quotidien du client, en dehors du sport prévu (cases à cocher, déjà connu — ne le lui redemande jamais) : ${acTags.join(", ")}.` +
+      (acDetails ? ` Précisions données par le client : "${acDetails}".` : "") +
+      " Un client sédentaire a besoin d'un objectif de pas et d'un volume d'entraînement différents d'un " +
+      "client déjà très actif au quotidien — calibre le programme ET les habitudes (voir ci-dessous) en " +
+      "conséquence."
+    : "";
+
+  const goals = currentGoals ?? {};
+  const goalsEntries = Object.entries(goals).filter(([, v]) => v !== null && v !== undefined);
+  const goalsContext = goalsEntries.length
+    ? "\n\nObjectifs quotidiens/habitudes actuels du client (onglet Suivi et Diète) : " +
+      goalsEntries.map(([k, v]) => `${k}=${v}`).join(", ") +
+      "."
+    : "";
+
+  const habitsInstruction =
+    "\n\nHABITUDES — en plus du programme de sport, tu peux aussi ajuster les objectifs quotidiens du client " +
+    "(pas, eau, sommeil, calories/macros — visibles dans ses onglets Suivi et Diète) quand la situation le " +
+    "justifie réellement : par exemple il n'atteint jamais son objectif de pas (ajuste-le à la baisse pour " +
+    "rester réaliste et motivant), son poids stagne alors qu'il respecte sa diète (ajuste les calories/macros), " +
+    "ou son sommeil est insuffisant pour bien récupérer (ajuste la cible). Selon la situation, tu peux ajuster " +
+    "le programme de sport, les habitudes, les deux, ou RIEN DU TOUT si rien ne le justifie ce jour-là — " +
+    "n'ajuste jamais juste pour ajuster. Quand tu ajustes une ou plusieurs habitudes, termine ta réponse par " +
+    "un bloc EXACTEMENT sous cette forme (uniquement les clés que tu changes réellement, omets les autres) :\n" +
+    `${HABITS_MARKER_START}\n{"steps_target": 8000, "water_target_l": 2.5, "sleep_target_h": 8, ` +
+    `"calories_target": 2200, "protein_target_g": 150, "carbs_target_g": 220, "fat_target_g": 70}\n${HABITS_MARKER_END}\n` +
+    "Ce bloc est invisible pour le client — dis-lui en clair, dans ton texte, ce que tu ajustes et pourquoi.";
 
   const base =
     "Tu es le coach sportif personnel et intégral d'un client, dans l'application G-Master. " +
@@ -138,17 +197,22 @@ export function buildSystemPrompt({
       objectifContext +
       sportContext +
       santeContext +
+      activiteContext +
       "\n\nLe client vient de te choisir comme coach et n'a pas encore de programme. Son objectif, son/ses " +
-      "sport(s), son accès au matériel et ses éventuels antécédents médicaux sont déjà connus (cases à " +
-      "cocher, voir ci-dessus) — NE REDEMANDE JAMAIS ces informations, elles ont déjà été posées par " +
-      "l'application avant que tu n'interviennes. Le client n'a pas de temps à perdre : construis " +
-      "IMMÉDIATEMENT, dans CE message, un premier programme complet et cohérent, adapté à son objectif, à " +
-      "son/ses sport(s) ET à ses éventuelles contraintes médicales (évite ou adapte tout exercice qui les " +
-      "aggraverait) — utilise des valeurs par défaut raisonnables pour ce qui reste inconnu (niveau " +
-      "intermédiaire, etc.). Si un antécédent signalé relève clairement d'un avis médical avant de reprendre " +
-      "le sport, dis-le-lui clairement en plus de construire un programme prudent, et utilise le bloc alerte " +
-      "coach ci-dessous. Livre ce premier programme dans la même réponse — ne fais pas attendre le client " +
-      "plus longtemps. Tu pourras ensuite affiner ce programme au fil des échanges normaux (niveau réel, " +
+      "sport(s), son accès au matériel, ses éventuels antécédents médicaux et son niveau d'activité quotidien " +
+      "sont déjà connus (cases à cocher, voir ci-dessus) — NE REDEMANDE JAMAIS ces informations, elles ont " +
+      "déjà été posées par l'application avant que tu n'interviennes. Le client n'a pas de temps à perdre : " +
+      "construis IMMÉDIATEMENT, dans CE message, un premier programme complet et cohérent, adapté à son " +
+      "objectif, à son/ses sport(s) (une séance de musculation s'il a coché musculation, une séance de course " +
+      "adaptée à ce qu'il a précisé s'il a coché course à pied, etc. — utilise sa précision obligatoire pour " +
+      "savoir EXACTEMENT ce qu'il veut dans ce sport), à ses éventuelles contraintes médicales (évite ou " +
+      "adapte tout exercice qui les aggraverait) et à son niveau d'activité — utilise des valeurs par défaut " +
+      "raisonnables pour ce qui reste inconnu (niveau intermédiaire, etc.). Fixe aussi, dans le même message, " +
+      "des habitudes de départ cohérentes (pas, eau, sommeil, calories/macros) via le bloc habitudes décrit " +
+      "plus bas. Si un antécédent signalé relève clairement d'un avis médical avant de reprendre le sport, " +
+      "dis-le-lui clairement en plus de construire un programme prudent, et utilise le bloc alerte coach " +
+      "ci-dessous. Livre ce premier programme dans la même réponse — ne fais pas attendre le client plus " +
+      "longtemps. Tu pourras ensuite affiner ce programme au fil des échanges normaux (niveau réel, " +
       "contraintes, taille, poids, habitudes) — pose ces questions APRÈS avoir livré ce premier programme, " +
       "une ou deux à la fois, jamais toutes d'un coup. " +
       "Pour livrer/mettre à jour le programme, termine ta réponse — après ton message normal au client — " +
@@ -159,6 +223,7 @@ export function buildSystemPrompt({
       "Ne montre ce bloc qu'une seule fois, quand le programme initial est prêt — pas avant, et ne le " +
       "répète pas dans les messages suivants." +
       seancesInstruction +
+      habitsInstruction +
       logsInstruction +
       alertInstruction
     );
@@ -169,6 +234,8 @@ export function buildSystemPrompt({
     objectifContext +
     sportContext +
     santeContext +
+    activiteContext +
+    goalsContext +
     "\n\nVoici le programme actuel du client, tel que tu l'as construit et ajusté jusqu'ici :\n" +
     JSON.stringify(program, null, 2) +
     "\n\nContinue à l'accompagner au quotidien à partir de ce programme : guidance alimentaire, " +
@@ -181,6 +248,7 @@ export function buildSystemPrompt({
     `${PROGRAM_MARKER_START}\n{ ... }\n${PROGRAM_MARKER_END}\n` +
     "N'inclus ce bloc que lorsque tu modifies réellement le programme, pas à chaque message." +
     seancesInstruction +
+    habitsInstruction +
     logsInstruction +
     alertInstruction
   );
@@ -212,12 +280,14 @@ export function extractStructuredBlocks(rawText: string): {
   logs: ExtractedLogs | null;
   alert: string | null;
   aiName: string | null;
+  habits: ExtractedHabits | null;
 } {
   let text = rawText;
   let program: Record<string, unknown> | null = null;
   let logs: ExtractedLogs | null = null;
   let alert: string | null = null;
   let aiName: string | null = null;
+  let habits: ExtractedHabits | null = null;
 
   const programBlock = extractBlock(text, PROGRAM_MARKER_START, PROGRAM_MARKER_END);
   text = programBlock.rest;
@@ -251,5 +321,15 @@ export function extractStructuredBlocks(rawText: string): {
     aiName = nameBlock.content.slice(0, 30);
   }
 
-  return { displayText: text.trim(), program, logs, alert, aiName };
+  const habitsBlock = extractBlock(text, HABITS_MARKER_START, HABITS_MARKER_END);
+  text = habitsBlock.rest;
+  if (habitsBlock.content) {
+    try {
+      habits = JSON.parse(habitsBlock.content) as ExtractedHabits;
+    } catch {
+      // ignoré
+    }
+  }
+
+  return { displayText: text.trim(), program, logs, alert, aiName, habits };
 }

@@ -11,16 +11,26 @@ export function OnboardingChecklistStep({
   title,
   subtitle,
   options,
+  freeformLabel = "Autre / précisions (optionnel)",
   freeformPlaceholder,
+  freeformRequired = false,
+  freeformErrorMessage,
   apiPath,
   continueLabel,
   buildSummary,
+  onSubmitStart,
   onSaved,
 }: {
   title: string;
   subtitle?: string;
   options: readonly string[];
+  freeformLabel?: string;
   freeformPlaceholder: string;
+  // Si vrai, le champ libre doit être rempli avant de continuer (ex: "quel
+  // est ton objectif précis dans ce sport ?" — sans quoi l'IA ne peut pas
+  // construire une séance pertinente).
+  freeformRequired?: boolean;
+  freeformErrorMessage?: string;
   apiPath: string;
   continueLabel: string;
   // Fourni uniquement sur la DERNIÈRE question de l'onboarding : le texte
@@ -28,6 +38,10 @@ export function OnboardingChecklistStep({
   // programme). Absent sur les questions intermédiaires : on enregistre et
   // on avance, sans appeler l'IA.
   buildSummary?: (tags: string[], details: string) => string;
+  // Appelé juste avant l'appel réseau (validation passée) — permet au
+  // parent d'afficher un écran de chargement pendant que l'IA construit le
+  // programme, plutôt qu'un simple bouton désactivé.
+  onSubmitStart?: () => void;
   onSaved: (tags: string[], details: string, reply: string | null) => void;
 }) {
   const [selected, setSelected] = useState<string[]>([]);
@@ -44,8 +58,13 @@ export function OnboardingChecklistStep({
       setError("Coche au moins une case.");
       return;
     }
+    if (freeformRequired && !details.trim()) {
+      setError(freeformErrorMessage ?? "Ce champ est obligatoire.");
+      return;
+    }
     setError(null);
     setSaving(true);
+    onSubmitStart?.();
     try {
       const saveRes = await fetch(apiPath, {
         method: "POST",
@@ -99,7 +118,7 @@ export function OnboardingChecklistStep({
       </div>
 
       <label className="flex flex-col gap-1.5 text-xs font-semibold text-muted-foreground">
-        Autre / précisions (optionnel)
+        {freeformLabel}
         <textarea
           value={details}
           onChange={(e) => setDetails(e.target.value)}

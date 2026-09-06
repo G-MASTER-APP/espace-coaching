@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { computeCostUsd, computeCycleStart } from "@/lib/ia-coach/pricing";
 import { buildSystemPrompt, extractStructuredBlocks } from "@/lib/ia-coach/system-prompt";
 import { applyExtractedLogs } from "@/lib/ia-coach/apply-logs";
+import { applyExtractedHabits } from "@/lib/ia-coach/apply-habits";
 import { notifyCoachOfClient } from "@/lib/ia-coach/notify-coach";
 
 const HISTORY_LIMIT = 30;
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
   const { data: coaching } = await supabase
     .from("ia_coaching")
     .select(
-      "spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details, sport_tags, sport_details, antecedents_tags, antecedents_details"
+      "spend_cycle, spend_limit, onboarding_done, program, ai_name, objectif_tags, objectif_details, sport_tags, sport_details, antecedents_tags, antecedents_details, activite_tags, activite_details"
     )
     .eq("client_id", user.id)
     .single();
@@ -54,6 +55,21 @@ export async function POST(request: Request) {
   if (!coaching) {
     return NextResponse.json({ error: "Profil Coach IA introuvable." }, { status: 404 });
   }
+
+  // Objectifs quotidiens actuels (Suivi/Diète) — pour que l'IA sache ce
+  // qu'elle ajuste plutôt que de deviner à l'aveugle.
+  const [{ data: dailyGoals }, { data: nutritionGoals }] = await Promise.all([
+    supabase
+      .from("coaching_goals")
+      .select("steps_target, water_target_l, sleep_target_h")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("nutrition_goals")
+      .select("calories_target, protein_target_g, carbs_target_g, fat_target_g")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+  ]);
 
   if (coaching.spend_cycle >= coaching.spend_limit) {
     await notifyCoachOfClient(supabase, user.id, {
@@ -88,6 +104,9 @@ export async function POST(request: Request) {
     sportDetails: coaching.sport_details,
     antecedentsTags: coaching.antecedents_tags,
     antecedentsDetails: coaching.antecedents_details,
+    activiteTags: coaching.activite_tags,
+    activiteDetails: coaching.activite_details,
+    currentGoals: { ...dailyGoals, ...nutritionGoals },
   });
 
   try {
@@ -118,7 +137,7 @@ export async function POST(request: Request) {
     const rawText: string =
       data.content?.find((c: { type: string }) => c.type === "text")?.text ?? "Je n'ai rien à répondre.";
 
-    const { displayText, program, logs, alert, aiName } = extractStructuredBlocks(rawText);
+    const { displayText, program, logs, alert, aiName, habits } = extractStructuredBlocks(rawText);
 
     await supabase.from("ia_messages").insert({ client_id: user.id, role: "assistant", content: displayText });
     await applyExtractedLogs(supabase, user.id, logs);
@@ -157,6 +176,7 @@ export async function POST(request: Request) {
     }
 
     await admin.from("ia_coaching").update(update).eq("client_id", user.id);
+    await applyExtractedHabits(admin, user.id, habits);
 
     if (alert) {
       await notifyCoachOfClient(supabase, user.id, {

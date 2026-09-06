@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Volume2, VolumeX } from "lucide-react";
+import { Loader2, Volume2, VolumeX } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
@@ -16,6 +16,7 @@ import { PremierBilanPrompt } from "./premier-bilan-prompt";
 import { SeanceTab } from "./seance-tab";
 import { SPORT_OPTIONS } from "@/lib/ia-coach/sport-options";
 import { ANTECEDENTS_OPTIONS } from "@/lib/ia-coach/antecedents-options";
+import { ACTIVITE_OPTIONS } from "@/lib/ia-coach/activite-options";
 
 type Message = { id?: string; role: "user" | "assistant"; content: string };
 type Coaching = {
@@ -31,6 +32,8 @@ type Coaching = {
   sport_details: string | null;
   antecedents_tags: string[];
   antecedents_details: string | null;
+  activite_tags: string[];
+  activite_details: string | null;
 };
 type Analysis = {
   id: string;
@@ -73,6 +76,9 @@ export function IaCoachView({
   const [sportTags, setSportTags] = useState(coaching.sport_tags);
   const [sportDetails, setSportDetails] = useState(coaching.sport_details ?? "");
   const [antecedentsTags, setAntecedentsTags] = useState(coaching.antecedents_tags);
+  const [antecedentsDetails, setAntecedentsDetails] = useState(coaching.antecedents_details ?? "");
+  const [activiteTags, setActiviteTags] = useState(coaching.activite_tags);
+  const [buildingProgram, setBuildingProgram] = useState(false);
   const [messages, setMessages] = useState(initialMessages);
   const [bilanDone, setBilanDone] = useState(hasBilan);
   const [bilanDismissed, setBilanDismissed] = useState(() => {
@@ -131,12 +137,18 @@ export function IaCoachView({
     setSportDetails(details);
   }
 
-  // Dernière question de l'onboarding : la réponse envoie tout au Coach IA
-  // (objectif + sport + antécédents sont déjà connus côté serveur via le
-  // system prompt) qui construit le programme immédiatement — on révèle
-  // alors la discussion.
-  function handleSanteSaved(tags: string[], details: string, reply: string | null) {
+  function handleSanteSaved(tags: string[], details: string) {
     setAntecedentsTags(tags);
+    setAntecedentsDetails(details);
+  }
+
+  // Dernière question de l'onboarding : la réponse envoie tout au Coach IA
+  // (objectif + sport + antécédents + activité sont déjà connus côté
+  // serveur via le system prompt) qui construit le programme et les
+  // habitudes immédiatement — on révèle alors la discussion.
+  function handleActiviteSaved(tags: string[], _details: string, reply: string | null) {
+    setActiviteTags(tags);
+    setBuildingProgram(false);
     if (reply) {
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
     }
@@ -149,8 +161,9 @@ export function IaCoachView({
   // sélecteur avant de laisser le client discuter avec l'IA.
   const needsObjectifFirst =
     !isCoachView && !coaching.onboarding_done && !needsNameFirst && objectifTags.length === 0;
-  // Puis sport & matériel, puis antécédents médicaux — même principe, une
-  // question à la fois avant de laisser parler l'IA.
+  // Puis sport & matériel, puis antécédents médicaux, puis niveau
+  // d'activité — même principe, une question à la fois avant de laisser
+  // parler l'IA.
   const needsSportFirst =
     !isCoachView && !coaching.onboarding_done && !needsNameFirst && !needsObjectifFirst && sportTags.length === 0;
   const needsSanteFirst =
@@ -160,6 +173,14 @@ export function IaCoachView({
     !needsObjectifFirst &&
     !needsSportFirst &&
     antecedentsTags.length === 0;
+  const needsActiviteFirst =
+    !isCoachView &&
+    !coaching.onboarding_done &&
+    !needsNameFirst &&
+    !needsObjectifFirst &&
+    !needsSportFirst &&
+    !needsSanteFirst &&
+    activiteTags.length === 0;
   // Onboarding fini mais aucun bilan de départ : proposé (jamais bloquant,
   // le client peut le repousser à plus tard).
   const showBilanPrompt = !isCoachView && coaching.onboarding_done && !bilanDone && !bilanDismissed;
@@ -202,7 +223,10 @@ export function IaCoachView({
           title="Ton sport & ton matériel"
           subtitle="Coche ce qui te correspond — tu peux cocher plusieurs cases."
           options={SPORT_OPTIONS}
-          freeformPlaceholder="Ex. Je fais du CrossFit 2x/semaine"
+          freeformLabel="Ton objectif précis pour ce(s) sport(s) (obligatoire)"
+          freeformPlaceholder="Ex. Je veux courir un 10km, prendre du muscle sur le haut du corps, tenir 30 min de course sans marcher..."
+          freeformRequired
+          freeformErrorMessage="Précise ce que tu veux atteindre avec ce sport — l'IA en a besoin pour construire les bonnes séances."
           apiPath="/api/ia-coach/sport"
           continueLabel="Question suivante"
           onSaved={handleSportSaved}
@@ -214,16 +238,41 @@ export function IaCoachView({
           options={ANTECEDENTS_OPTIONS}
           freeformPlaceholder="Ex. Opération du genou il y a 2 ans"
           apiPath="/api/ia-coach/sante"
-          continueLabel="C'est parti"
-          buildSummary={(tags, details) => {
-            const sportPart =
-              `Sport & matériel : ${sportTags.join(", ")}` + (sportDetails ? ` (${sportDetails})` : "") + ".";
-            const santePart =
-              `Antécédents médicaux : ${tags.join(", ")}` + (details.trim() ? ` (${details.trim()})` : "") + ".";
-            return `${sportPart} ${santePart}`;
-          }}
+          continueLabel="Question suivante"
           onSaved={handleSanteSaved}
         />
+      ) : needsActiviteFirst ? (
+        buildingProgram ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16 text-center">
+            <Loader2 className="size-8 animate-spin text-primary" />
+            <p className="text-sm font-semibold text-foreground">
+              Ton Coach IA prépare ton programme et tes habitudes...
+            </p>
+            <p className="text-xs text-muted-foreground">Ça prend quelques secondes.</p>
+          </div>
+        ) : (
+          <OnboardingChecklistStep
+            title="Ton niveau d'activité"
+            subtitle="En dehors du sport prévu, comment décrirais-tu tes journées ?"
+            options={ACTIVITE_OPTIONS}
+            freeformPlaceholder="Optionnel"
+            apiPath="/api/ia-coach/activite"
+            continueLabel="C'est parti"
+            buildSummary={(tags, details) => {
+              const sportPart =
+                `Sport & matériel : ${sportTags.join(", ")}` + (sportDetails ? ` (${sportDetails})` : "") + ".";
+              const santePart =
+                `Antécédents médicaux : ${antecedentsTags.join(", ")}` +
+                (antecedentsDetails.trim() ? ` (${antecedentsDetails.trim()})` : "") +
+                ".";
+              const activitePart =
+                `Niveau d'activité : ${tags.join(", ")}` + (details.trim() ? ` (${details.trim()})` : "") + ".";
+              return `${sportPart} ${santePart} ${activitePart}`;
+            }}
+            onSubmitStart={() => setBuildingProgram(true)}
+            onSaved={handleActiviteSaved}
+          />
+        )
       ) : (
         <>
           {showBilanPrompt && (
