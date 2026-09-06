@@ -119,10 +119,14 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-5",
-        // 1000 était trop juste dès que la réponse doit inclure le JSON du
-        // programme (séances structurées) ET celui des habitudes — une
-        // réponse tronquée pouvait finir sans aucun bloc "text" exploitable.
-        max_tokens: 2000,
+        // Une réponse peut devoir inclure : le message visible, PLUSIEURS
+        // séances structurées (musculation ou cardio, avec description),
+        // ET le bloc habitudes — 2000 s'est avéré trop juste (le bloc
+        // habitudes se retrouvait tronqué en fin de génération, donc jamais
+        // appliqué : marker de fin jamais atteint). Le message visible
+        // devant rester court (voir system-prompt), cette marge sert
+        // surtout à ne jamais couper un bloc JSON avant sa fin.
+        max_tokens: 4000,
         system: systemPrompt,
         messages: [
           ...orderedHistory.map((m) => ({ role: m.role, content: m.content })),

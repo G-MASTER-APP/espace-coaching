@@ -296,8 +296,15 @@ function extractBlock(
 ): { rest: string; content: string | null } {
   const startIdx = text.indexOf(startMarker);
   const endIdx = text.indexOf(endMarker);
-  if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) {
+  if (startIdx === -1) {
     return { rest: text, content: null };
+  }
+  if (endIdx === -1 || endIdx < startIdx) {
+    // Marqueur de fin jamais atteint (réponse tronquée par max_tokens) :
+    // le bloc est de toute façon inexploitable, mais on le retire quand
+    // même du texte visible plutôt que de laisser du JSON coupé et illisible
+    // s'afficher tel quel dans le chat.
+    return { rest: text.slice(0, startIdx).trim(), content: null };
   }
   const content = text.slice(startIdx + startMarker.length, endIdx).trim();
   const rest = text.slice(0, startIdx) + text.slice(endIdx + endMarker.length);

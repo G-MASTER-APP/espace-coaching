@@ -130,7 +130,10 @@ export async function runProactiveCheckIn(
     },
     body: JSON.stringify({
       model: "claude-sonnet-5",
-      max_tokens: 800,
+      // Le message reste censé être bref (recap/relance), mais ce prompt
+      // autorise aussi un ajustement programme/habitudes (JSON) si la
+      // situation le justifie — marge pour ne jamais couper ces blocs.
+      max_tokens: 2000,
       system: systemPrompt,
       messages: [
         ...orderedHistory.map((m) => ({ role: m.role, content: m.content })),
