@@ -11,7 +11,7 @@ const JORIS_STEPS: IntroStep[] = [
   {
     icon: "🧑",
     title: "Ton coach, en vrai",
-    body: "Joris construit ton programme, suit ta progression et te répond directement — un humain, pas un robot.",
+    body: "Joris construit ton programme, suit ta progression et te répond directement, avec toi à chaque étape.",
     visual: <CoachJorisVisual />,
   },
   {
@@ -24,9 +24,9 @@ const JORIS_STEPS: IntroStep[] = [
 
 const IA_STEPS: IntroStep[] = [
   {
-    icon: "🤖",
-    title: "Une IA disponible 24/7",
-    body: "Elle construit ton programme en te posant des questions, puis t'accompagne au jour le jour — à l'écrit ou à l'oral.",
+    icon: "🧸",
+    title: "Ton coach, disponible 24/7",
+    body: "Il construit ton programme en te posant des questions, puis t'accompagne au jour le jour — à l'écrit ou à l'oral.",
     visual: <CoachIaVisual />,
   },
   {
@@ -68,7 +68,7 @@ export function CoachingModeChoice({ currentMode }: { currentMode?: "joris" | "i
         >
           <p className="text-base font-extrabold text-foreground">🧑 Coach Joris</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Un vrai coach humain : programme, suivi et réponses directement par Joris.
+            Coaché par Joris GMA, le coach qui va te faire atteindre tes objectifs.
           </p>
           {currentMode === "joris" && (
             <p className="mt-2 text-xs font-semibold text-primary">Ton coach actuel</p>
@@ -81,9 +81,9 @@ export function CoachingModeChoice({ currentMode }: { currentMode?: "joris" | "i
           disabled={pending}
           className="rounded-2xl border border-border bg-card p-5 text-left disabled:opacity-60"
         >
-          <p className="text-base font-extrabold text-foreground">🤖 Coach IA</p>
+          <p className="text-base font-extrabold text-foreground">🧸 Coach IA</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Disponible 24h/24 : construit ton programme, ajuste ta diète et ton sport, à l&apos;écrit comme à l&apos;oral.
+            Ton coach personnel, qui va te faire exploser physiquement — disponible 24h/24.
           </p>
           {currentMode === "ia" && (
             <p className="mt-2 text-xs font-semibold text-primary">Ton coach actuel</p>

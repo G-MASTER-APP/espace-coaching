@@ -137,7 +137,7 @@ export function ClientList({ clients: initialClients }: { clients: Client[] }) {
                     <p className="font-medium text-foreground">{client.full_name || "Sans nom"}</p>
                     {client.coaching_mode === "ia" && (
                       <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                        🤖 {client.ia?.ai_name || "IA"}
+                        🧸 {client.ia?.ai_name || "IA"}
                       </span>
                     )}
                   </div>

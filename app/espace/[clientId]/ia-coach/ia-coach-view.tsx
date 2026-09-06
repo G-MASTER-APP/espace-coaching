@@ -188,7 +188,7 @@ export function IaCoachView({
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 px-4 py-6">
       <PageHeader
-        icon="🤖"
+        icon="🧸"
         eyebrow={
           isCoachView
             ? `Vue coach — lecture seule${coaching.ai_name ? ` (surnommé "${coaching.ai_name}")` : ""}`

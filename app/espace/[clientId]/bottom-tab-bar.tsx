@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarCheck, Dumbbell, Video, Utensils, Ruler, HeartHandshake, Bot } from "lucide-react";
+import { CalendarCheck, Dumbbell, Video, Utensils, Ruler, HeartHandshake } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -15,7 +15,9 @@ const TABS = [
   { key: "accompagnement", label: "Suivi", icon: HeartHandshake },
 ] as const;
 
-const IA_COACH_TAB = { key: "ia-coach", label: "Coach IA", icon: Bot } as const;
+// Emoji plutôt qu'une icône lucide type "robot" — le Coach IA doit rester
+// chaleureux, pas froid/mécanique.
+const IA_COACH_TAB = { key: "ia-coach", label: "Coach IA", icon: "🧸" } as const;
 
 export function BottomTabBar({ clientId, showIaCoachTab }: { clientId: string; showIaCoachTab?: boolean }) {
   const pathname = usePathname();
@@ -37,7 +39,11 @@ export function BottomTabBar({ clientId, showIaCoachTab }: { clientId: string; s
                   active ? "text-primary" : "text-muted-foreground"
                 )}
               >
-                <Icon className="size-5" />
+                {typeof Icon === "string" ? (
+                  <span className="text-base leading-none">{Icon}</span>
+                ) : (
+                  <Icon className="size-5" />
+                )}
                 <span className="leading-none">{tab.label}</span>
               </Link>
             </li>
