@@ -220,6 +220,7 @@ export function IaCoachView({
         />
       ) : needsSportFirst ? (
         <OnboardingChecklistStep
+          key="sport"
           title="Ton sport & ton matériel"
           subtitle="Coche ce qui te correspond — tu peux cocher plusieurs cases."
           options={SPORT_OPTIONS}
@@ -233,6 +234,7 @@ export function IaCoachView({
         />
       ) : needsSanteFirst ? (
         <OnboardingChecklistStep
+          key="sante"
           title="Antécédents médicaux"
           subtitle="Coche ce qui s'applique — important pour un programme adapté et sans risque."
           options={ANTECEDENTS_OPTIONS}
@@ -252,6 +254,7 @@ export function IaCoachView({
           </div>
         ) : (
           <OnboardingChecklistStep
+            key="activite"
             title="Ton niveau d'activité"
             subtitle="En dehors du sport prévu, comment décrirais-tu tes journées ?"
             options={ACTIVITE_OPTIONS}

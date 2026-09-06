@@ -119,7 +119,10 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-5",
-        max_tokens: 1000,
+        // 1000 était trop juste dès que la réponse doit inclure le JSON du
+        // programme (séances structurées) ET celui des habitudes — une
+        // réponse tronquée pouvait finir sans aucun bloc "text" exploitable.
+        max_tokens: 2000,
         system: systemPrompt,
         messages: [
           ...orderedHistory.map((m) => ({ role: m.role, content: m.content })),
@@ -134,10 +137,19 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
-    const rawText: string =
-      data.content?.find((c: { type: string }) => c.type === "text")?.text ?? "Je n'ai rien à répondre.";
+    const rawText: string | undefined = data.content?.find((c: { type: string }) => c.type === "text")?.text;
+    if (!rawText) {
+      throw new Error("Réponse Anthropic sans bloc texte exploitable.");
+    }
 
     const { displayText, program, logs, alert, aiName, habits } = extractStructuredBlocks(rawText);
+    if (!displayText) {
+      // Rien à afficher une fois les blocs structurés retirés (le modèle
+      // n'a produit que du JSON, sans phrase pour le client) — mieux vaut
+      // une erreur claire côté client (avec retry possible) qu'un message
+      // vide ou un faux "Je n'ai rien à répondre." stocké en conversation.
+      throw new Error("Réponse vide après extraction des blocs structurés.");
+    }
 
     await supabase.from("ia_messages").insert({ client_id: user.id, role: "assistant", content: displayText });
     await applyExtractedLogs(supabase, user.id, logs);
