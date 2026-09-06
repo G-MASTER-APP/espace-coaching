@@ -24,6 +24,7 @@ export default async function ProgrammePage({
     .select("coaching_mode")
     .eq("id", clientId)
     .maybeSingle();
+  const isIaClient = target?.coaching_mode === "ia";
 
   const [{ data: program }, { data: videos }] = await Promise.all([
     supabase.from("programs").select("id, program_url").eq("user_id", clientId).maybeSingle(),
@@ -34,6 +35,30 @@ export default async function ProgrammePage({
       .order("position"),
   ]);
 
+  // Client Coach IA : le programme (séances structurées) et la dernière
+  // performance connue viennent de ia_coaching / ia_workout_logs, pas de la
+  // table "programs" (PDF déposé par le coach humain, sans rapport ici).
+  let iaProgram: Record<string, unknown> = {};
+  let lastPerformance: Record<string, { poids_kg: number; repetitions: number }[]> = {};
+  if (isIaClient) {
+    const [{ data: coaching }, { data: workoutLogs }] = await Promise.all([
+      supabase.from("ia_coaching").select("program").eq("client_id", clientId).maybeSingle(),
+      supabase
+        .from("ia_workout_logs")
+        .select("exercices, completed_at")
+        .eq("client_id", clientId)
+        .order("completed_at", { ascending: false })
+        .limit(20),
+    ]);
+    iaProgram = (coaching?.program as Record<string, unknown>) ?? {};
+    for (const log of workoutLogs ?? []) {
+      const exercices = (log.exercices ?? []) as { nom: string; series: { poids_kg: number; repetitions: number }[] }[];
+      for (const ex of exercices) {
+        if (!lastPerformance[ex.nom]) lastPerformance[ex.nom] = ex.series;
+      }
+    }
+  }
+
   return (
     <ProgrammeView
       clientId={clientId}
@@ -41,7 +66,9 @@ export default async function ProgrammePage({
       programId={program?.id ?? null}
       programUrl={program?.program_url ?? ""}
       initialVideos={videos ?? []}
-      isIaClient={target?.coaching_mode === "ia"}
+      isIaClient={isIaClient}
+      iaProgram={iaProgram}
+      lastPerformance={lastPerformance}
     />
   );
 }

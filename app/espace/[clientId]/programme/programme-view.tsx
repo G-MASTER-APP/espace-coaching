@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { VideoCard } from "@/components/video-card";
 import { AddButton } from "@/components/add-button";
+import { SeanceTab } from "../ia-coach/seance-tab";
 
 type VideoRow = { id: string; title: string; url: string; position: number };
 
@@ -21,6 +22,8 @@ export function ProgrammeView({
   programUrl: initialProgramUrl,
   initialVideos,
   isIaClient,
+  iaProgram,
+  lastPerformance,
 }: {
   clientId: string;
   isCoach: boolean;
@@ -28,6 +31,8 @@ export function ProgrammeView({
   programUrl: string;
   initialVideos: VideoRow[];
   isIaClient?: boolean;
+  iaProgram?: Record<string, unknown>;
+  lastPerformance?: Record<string, { poids_kg: number; repetitions: number }[]>;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [programId, setProgramId] = useState(initialProgramId);
@@ -121,41 +126,40 @@ export function ProgrammeView({
     <div className="flex flex-col gap-8 px-4 py-6">
       <PageHeader icon="💪" eyebrow="Espace" title="Programme" />
 
-      {isIaClient && !isCoach && (
-        <p className="rounded-xl border border-border bg-secondary/60 px-4 py-3 text-sm text-muted-foreground">
-          Ton programme de sport est construit et ajusté par ton Coach IA — retrouve-le dans l&apos;onglet{" "}
-          <span className="font-semibold text-foreground">Coach IA</span>, sous-onglet{" "}
-          <span className="font-semibold text-foreground">Séance</span>.
-        </p>
-      )}
-
-      <section className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
+      {isIaClient ? (
+        <section className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold text-foreground">Mon programme</h2>
-          {isCoach && <SaveIndicator status={programSaveStatus} />}
-        </div>
-        {isCoach ? (
-          <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
-            <Input
-              value={programUrl}
-              onChange={(e) => onProgramUrlChange(e.target.value)}
-              placeholder="Lien Hevy, Google Sheet, Drive..."
-            />
+          <SeanceTab program={iaProgram ?? {}} lastPerformance={lastPerformance ?? {}} />
+        </section>
+      ) : (
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground">Mon programme</h2>
+            {isCoach && <SaveIndicator status={programSaveStatus} />}
           </div>
-        ) : programUrl ? (
-          <a
-            href={programUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-br from-primary to-primary/80 px-4 py-4 text-primary-foreground shadow-md shadow-primary/20 transition-all duration-150 active:scale-95"
-          >
-            <Dumbbell className="size-5" />
-            <span className="text-sm font-semibold">Ouvrir mon programme</span>
-          </a>
-        ) : (
-          <p className="text-sm text-muted-foreground">Pas encore de programme partagé.</p>
-        )}
-      </section>
+          {isCoach ? (
+            <div className="rounded-xl border border-border bg-card p-3 shadow-sm">
+              <Input
+                value={programUrl}
+                onChange={(e) => onProgramUrlChange(e.target.value)}
+                placeholder="Lien Hevy, Google Sheet, Drive..."
+              />
+            </div>
+          ) : programUrl ? (
+            <a
+              href={programUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-br from-primary to-primary/80 px-4 py-4 text-primary-foreground shadow-md shadow-primary/20 transition-all duration-150 active:scale-95"
+            >
+              <Dumbbell className="size-5" />
+              <span className="text-sm font-semibold">Ouvrir mon programme</span>
+            </a>
+          ) : (
+            <p className="text-sm text-muted-foreground">Pas encore de programme partagé.</p>
+          )}
+        </section>
+      )}
 
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold text-foreground">Vidéos du programme</h2>
