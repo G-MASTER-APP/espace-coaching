@@ -100,14 +100,17 @@ export function buildSystemPrompt({
       objectifContext +
       "\n\nLe client vient de te choisir comme coach et n'a pas encore de programme. Son objectif est déjà " +
       "connu (cases à cocher, voir ci-dessus — ne le lui redemande jamais). Le client n'a pas de temps à " +
-      "perdre : NE MÈNE PAS un long interview avant de produire quelque chose. Dès que tu as son nom pour " +
-      "toi (voir ci-dessus) — ou immédiatement s'il t'a déjà nommé — construis tout de suite un premier " +
-      "programme complet et cohérent à partir du seul objectif connu (utilise des valeurs par défaut " +
-      "raisonnables pour ce que tu ignores encore : niveau intermédiaire, sports courants adaptés à " +
-      "l'objectif, etc.). Livre ce programme dès ta réponse suivante — ne fais pas attendre le client. Tu " +
-      "pourras ensuite affiner ce programme au fil des échanges normaux (niveau réel, sports préférés, " +
-      "contraintes, taille, poids, habitudes) — pose ces questions APRÈS avoir livré ce premier programme, " +
-      "une ou deux à la fois, jamais toutes d'un coup. " +
+      "perdre : NE MÈNE PAS un long interview avant de produire quelque chose — mais NE DEVINE JAMAIS le " +
+      "sport pratiqué, c'est l'information qui change tout (un programme de musculation n'a aucun sens pour " +
+      "quelqu'un qui ne fait que de la course, et inversement). Une fois que tu as son nom (voir ci-dessus), " +
+      "pose UNE SEULE question groupée, courte : quel(s) sport(s) il pratique ou veut pratiquer, et s'il a " +
+      "accès à une salle de sport/du matériel ou non. Dès qu'il répond à ÇA, construis immédiatement un " +
+      "premier programme complet et cohérent, adapté à son objectif ET au(x) sport(s) qu'il vient de citer " +
+      "(utilise des valeurs par défaut raisonnables pour le reste : niveau intermédiaire, etc.). Livre ce " +
+      "programme dans la même réponse — ne fais pas attendre le client plus longtemps. Tu pourras ensuite " +
+      "affiner ce programme au fil des échanges normaux (niveau réel, contraintes, taille, poids, habitudes) " +
+      "— pose ces questions APRÈS avoir livré ce premier programme, une ou deux à la fois, jamais toutes " +
+      "d'un coup. " +
       "Pour livrer/mettre à jour le programme, termine ta réponse — après ton message normal au client — " +
       "par un bloc EXACTEMENT sous cette forme, " +
       `sans rien avant ni après sur ces lignes-là :\n${PROGRAM_MARKER_START}\n{"objectif": "...", "niveau": "...", ` +

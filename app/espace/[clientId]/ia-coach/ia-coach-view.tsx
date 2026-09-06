@@ -10,6 +10,7 @@ import { IaCoachChat } from "./ia-coach-chat";
 import { IaVideoAnalyzer } from "./ia-video-analyzer";
 import { IaLiveAnalyzer } from "./ia-live-analyzer";
 import { ObjectifSelector } from "./objectif-selector";
+import { PremierBilanPrompt } from "./premier-bilan-prompt";
 
 type Message = { id?: string; role: "user" | "assistant"; content: string };
 type Coaching = {
@@ -43,18 +44,37 @@ export function IaCoachView({
   initialMessages,
   coaching,
   analyses,
+  hasBilan,
 }: {
   clientId: string;
   isCoachView: boolean;
   initialMessages: Message[];
   coaching: Coaching;
   analyses: Analysis[];
+  hasBilan: boolean;
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("chat");
   const [muted, setMuted] = useState(false);
   const [objectifTags, setObjectifTags] = useState(coaching.objectif_tags);
   const [objectifDetails, setObjectifDetails] = useState(coaching.objectif_details ?? "");
   const [messages, setMessages] = useState(initialMessages);
+  const [bilanDone, setBilanDone] = useState(hasBilan);
+  const [bilanDismissed, setBilanDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(`ia-coach-${clientId}-bilan-dismissed`) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  function dismissBilanPrompt() {
+    setBilanDismissed(true);
+    try {
+      localStorage.setItem(`ia-coach-${clientId}-bilan-dismissed`, "1");
+    } catch {
+      // ignoré
+    }
+  }
 
   function toggleMute() {
     const next = !muted;
@@ -67,18 +87,35 @@ export function IaCoachView({
     if (next) stopSpeaking();
   }
 
-  function handleObjectifSaved(tags: string[], details: string, reply: string | null) {
+  function applyObjectifUpdate(tags: string[], details: string, reply: string | null) {
     setObjectifTags(tags);
     setObjectifDetails(details);
     if (reply) {
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
     }
+  }
+
+  // Onboarding : une fois l'objectif posé, on révèle directement la
+  // discussion (il n'y a pas encore d'onglets à ce stade).
+  function handleOnboardingObjectifSaved(tags: string[], details: string, reply: string | null) {
+    applyObjectifUpdate(tags, details, reply);
     setTab("chat");
+  }
+
+  // Onglet Objectif (après onboarding) : on reste sur place — l'utilisateur
+  // doit voir la confirmation d'enregistrement, pas être basculé ailleurs
+  // sans explication (c'est ce qui donnait l'impression que "rien ne se
+  // passait").
+  function handleObjectifTabUpdate(tags: string[], details: string, reply: string | null) {
+    applyObjectifUpdate(tags, details, reply);
   }
 
   // Onboarding pas fini et aucun objectif choisi : on bloque sur le
   // sélecteur avant de laisser le client discuter avec l'IA.
   const needsObjectifFirst = !isCoachView && !coaching.onboarding_done && objectifTags.length === 0;
+  // Onboarding fini mais aucun bilan de départ : proposé (jamais bloquant,
+  // le client peut le repousser à plus tard).
+  const showBilanPrompt = !isCoachView && coaching.onboarding_done && !bilanDone && !bilanDismissed;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-4 px-4 py-6">
@@ -109,10 +146,20 @@ export function IaCoachView({
           initialTags={objectifTags}
           initialDetails={objectifDetails}
           isOnboarding
-          onSaved={handleObjectifSaved}
+          onSaved={handleOnboardingObjectifSaved}
         />
       ) : (
         <>
+          {showBilanPrompt && (
+            <PremierBilanPrompt
+              clientId={clientId}
+              onDone={(saved) => {
+                if (saved) setBilanDone(true);
+                dismissBilanPrompt();
+              }}
+            />
+          )}
+
           {!isCoachView && (
             <div className="flex gap-1 rounded-full bg-secondary/60 p-1">
               {TABS.map((t) => (
@@ -144,7 +191,7 @@ export function IaCoachView({
             <ObjectifSelector
               initialTags={objectifTags}
               initialDetails={objectifDetails}
-              onSaved={handleObjectifSaved}
+              onSaved={handleObjectifTabUpdate}
             />
           )}
           {!isCoachView && tab === "video" && <IaVideoAnalyzer clientId={clientId} muted={muted} />}

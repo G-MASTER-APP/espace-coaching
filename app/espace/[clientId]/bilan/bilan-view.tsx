@@ -15,6 +15,7 @@ type Bilan = {
   measured_at: string;
   measurements: Measurements;
   photos_url: string | null;
+  weight_kg: number | null;
 };
 
 function formatDate(iso: string): string {
@@ -63,6 +64,19 @@ export function BilanView({ clientId, bilans }: { clientId: string; bilans: Bila
           </p>
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex flex-col divide-y divide-border">
+              {previous.weight_kg !== null && latest.weight_kg !== null && (
+                <div className="flex items-center justify-between py-2 text-sm">
+                  <span className="text-foreground">Poids</span>
+                  {(() => {
+                    const delta = latest.weight_kg! - previous.weight_kg!;
+                    return (
+                      <span className={delta === 0 ? "text-muted-foreground" : delta > 0 ? "text-accent" : "text-primary"}>
+                        {latest.weight_kg} kg {delta !== 0 && `(${delta > 0 ? "+" : ""}${delta.toFixed(1)})`}
+                      </span>
+                    );
+                  })()}
+                </div>
+              )}
               {BODY_ZONES.map((zone) => {
                 const before = previous.measurements[zone.key];
                 const after = latest.measurements[zone.key];
@@ -119,6 +133,12 @@ export function BilanView({ clientId, bilans }: { clientId: string; bilans: Bila
               </div>
             </summary>
             <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              {bilan.weight_kg !== null && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Poids</span>
+                  <span className="text-foreground">{bilan.weight_kg} kg</span>
+                </div>
+              )}
               {BODY_ZONES.map((zone) => {
                 const value = bilan.measurements[zone.key];
                 if (value === undefined) return null;

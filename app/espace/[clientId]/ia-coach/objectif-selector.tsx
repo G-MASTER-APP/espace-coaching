@@ -20,6 +20,7 @@ export function ObjectifSelector({
   const [details, setDetails] = useState(initialDetails);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [justSaved, setJustSaved] = useState(false);
 
   function toggle(tag: string) {
     setSelected((current) =>
@@ -33,6 +34,7 @@ export function ObjectifSelector({
       return;
     }
     setError(null);
+    setJustSaved(false);
     setSaving(true);
     try {
       const saveRes = await fetch("/api/ia-coach/objectif", {
@@ -40,7 +42,10 @@ export function ObjectifSelector({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tags: selected, details }),
       });
-      if (!saveRes.ok) throw new Error();
+      if (!saveRes.ok) {
+        const body = (await saveRes.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error || "save_failed");
+      }
 
       const changed =
         JSON.stringify([...selected].sort()) !== JSON.stringify([...initialTags].sort()) ||
@@ -60,6 +65,10 @@ export function ObjectifSelector({
         }
       }
       onSaved(selected, details, reply);
+      if (!isOnboarding) {
+        setJustSaved(true);
+        setTimeout(() => setJustSaved(false), 2500);
+      }
     } catch {
       setError("Impossible d'enregistrer — réessaie.");
     } finally {
@@ -107,6 +116,7 @@ export function ObjectifSelector({
       </label>
 
       {error && <p className="text-xs text-destructive">{error}</p>}
+      {justSaved && <p className="text-xs font-semibold text-primary">✓ Objectif enregistré.</p>}
       <Button type="button" onClick={submit} disabled={saving}>
         {saving ? "Enregistrement…" : isOnboarding ? "Continuer" : "Enregistrer"}
       </Button>

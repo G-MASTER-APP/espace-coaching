@@ -16,6 +16,7 @@ export function BilanForm({ clientId }: { clientId: string }) {
   const [saving, setSaving] = useState(false);
   const [measurements, setMeasurements] = useState<Measurements>({});
   const [photosUrl, setPhotosUrl] = useState("");
+  const [weightKg, setWeightKg] = useState("");
 
   async function submit() {
     setSaving(true);
@@ -23,12 +24,14 @@ export function BilanForm({ clientId }: { clientId: string }) {
       user_id: clientId,
       measurements,
       photos_url: photosUrl || null,
+      weight_kg: weightKg ? Number(weightKg) : null,
     });
     setSaving(false);
     if (!error) {
       setOpen(false);
       setMeasurements({});
       setPhotosUrl("");
+      setWeightKg("");
       router.refresh();
     }
   }
@@ -48,6 +51,17 @@ export function BilanForm({ clientId }: { clientId: string }) {
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
       <h2 className="text-sm font-semibold text-foreground">Nouveau bilan</h2>
+      <div className="flex flex-col gap-1">
+        <label className="text-xs text-muted-foreground">Poids (kg)</label>
+        <Input
+          type="number"
+          step="0.1"
+          min="0"
+          value={weightKg}
+          onChange={(e) => setWeightKg(e.target.value)}
+          placeholder="Ex. 72.5"
+        />
+      </div>
       <div className="grid grid-cols-2 gap-3">
         {BODY_ZONES.map((zone) => (
           <div key={zone.key} className="flex flex-col gap-1">

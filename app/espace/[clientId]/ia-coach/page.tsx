@@ -31,7 +31,7 @@ export default async function IaCoachPage({
 
   const isCoachView = user.id !== clientId;
 
-  const [{ data: coaching }, { data: messages }, { data: analyses }] = await Promise.all([
+  const [{ data: coaching }, { data: messages }, { data: analyses }, { data: bilans }] = await Promise.all([
     supabase
       .from("ia_coaching")
       .select(
@@ -51,6 +51,7 @@ export default async function IaCoachPage({
       .eq("status", "done")
       .order("created_at", { ascending: false })
       .limit(10),
+    supabase.from("body_measurements").select("id").eq("user_id", clientId).limit(1),
   ]);
 
   return (
@@ -73,6 +74,7 @@ export default async function IaCoachPage({
             }
       }
       analyses={analyses ?? []}
+      hasBilan={(bilans ?? []).length > 0}
     />
   );
 }

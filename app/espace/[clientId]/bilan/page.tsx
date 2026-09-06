@@ -11,7 +11,7 @@ export default async function BilanPage({
 
   const { data: bilans } = await supabase
     .from("body_measurements")
-    .select("id, measured_at, measurements, photos_url")
+    .select("id, measured_at, measurements, photos_url, weight_kg")
     .eq("user_id", clientId)
     .order("measured_at", { ascending: false });
 
