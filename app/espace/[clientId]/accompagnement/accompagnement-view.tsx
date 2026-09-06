@@ -62,6 +62,7 @@ export function AccompagnementView({
   today,
   nutritionGoals: initialNutritionGoals,
   initialFoodEntries,
+  hideForfait,
 }: {
   clientId: string;
   isCoach: boolean;
@@ -71,6 +72,7 @@ export function AccompagnementView({
   today: string;
   nutritionGoals: NutritionGoals | null;
   initialFoodEntries: FoodEntry[];
+  hideForfait?: boolean;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [goals, setGoals] = useState(initialGoals);
@@ -394,7 +396,10 @@ export function AccompagnementView({
             />
           </div>
 
-          {/* Forfait : cycle fixe de 3 mois démarré par le coach */}
+          {/* Forfait : cycle fixe de 3 mois démarré par le coach — sans
+              objet pour un client suivi par le Coach IA (pas de forfait de
+              séances avec Joris dans ce cas). */}
+          {!hideForfait && (
           <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-foreground">Forfait</h2>
@@ -455,6 +460,7 @@ export function AccompagnementView({
             </div>
             <p className="mt-1 text-[10px] text-muted-foreground">Séances réalisées aujourd&apos;hui</p>
           </div>
+          )}
         </div>
       )}
     </div>

@@ -23,6 +23,16 @@ export default async function AccompagnementPage({
     .single();
   const isCoach = viewer?.role === "coach";
 
+  // Le Forfait (cycle de séances payées) n'a pas de sens pour un client
+  // suivi par le Coach IA : ce n'est pas lui qui gère un forfait de
+  // séances avec Joris.
+  const { data: targetClient } = await supabase
+    .from("profiles")
+    .select("coaching_mode")
+    .eq("id", clientId)
+    .maybeSingle();
+  const hideForfait = targetClient?.coaching_mode === "ia";
+
   // Objectifs : uniquement créés par le coach (RLS). Un client sans coach
   // ayant encore rien défini verra un état vide, c'est attendu.
   const goalsColumns =
@@ -120,6 +130,7 @@ export default async function AccompagnementPage({
       today={today}
       nutritionGoals={nutritionGoals ?? null}
       initialFoodEntries={foodEntries ?? []}
+      hideForfait={hideForfait}
     />
   );
 }

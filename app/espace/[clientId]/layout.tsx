@@ -59,7 +59,14 @@ export default async function EspaceLayout({
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <EspaceHeader role={viewer.role as "coach" | "client"} clients={coachClients} currentClientId={clientId} />
-      <div className="flex-1 pb-20">{children}</div>
+      {/* key={clientId} : force le remontage complet des pages enfants (état
+          React local, useState initialisés depuis les props serveur) quand
+          on change de client — sinon une navigation côté client entre deux
+          clients (ex: sélecteur coach, ou signup pendant qu'une session
+          précédente était encore affichée) peut laisser les anciennes
+          données affichées, React ne remontant pas automatiquement les
+          composants juste parce que les props ont changé. */}
+      <div key={clientId} className="flex-1 pb-20">{children}</div>
       {/* Jarvis n'a plus sa place pour un client suivi par le Coach IA — ce
           serait deux assistants flottants qui se marchent dessus. Reste
           disponible pour les clients suivis par Joris.
@@ -73,15 +80,7 @@ export default async function EspaceLayout({
           isCoach={viewer.role === "coach"}
         />
       )}
-      <BottomTabBar
-        clientId={clientId}
-        showIaCoachTab={client.coaching_mode === "ia"}
-        // Le client suivi par l'IA ne voit plus les anciens onglets
-        // (programme, diète, suivi/forfait...) : tout se passe dans Coach
-        // IA. Le coach garde tous les onglets quand il consulte cet espace,
-        // pour l'oversight manuel.
-        iaExclusive={client.coaching_mode === "ia" && viewer.role !== "coach"}
-      />
+      <BottomTabBar clientId={clientId} showIaCoachTab={client.coaching_mode === "ia"} />
     </div>
   );
 }
