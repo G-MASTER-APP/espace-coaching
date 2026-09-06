@@ -74,6 +74,10 @@ export function createRecognizer(
 
 const MALE_VOICE_HINTS = /paul|henri|thomas|nicolas|guillaume|damien|male|homme/i;
 const FEMALE_VOICE_HINTS = /hortense|julie|amelie|amélie|denise|audrey|celine|céline|léa|lea|female|femme/i;
+// Les voix "Natural"/"Online"/"Neural" (Edge) et "Google" (Chrome) sonnent
+// nettement moins robotique que les voix système par défaut — préférées
+// avant même le critère masculin.
+const NATURAL_VOICE_HINTS = /natural|online|neural|google/i;
 
 export function listFrenchVoices(): SpeechSynthesisVoice[] {
   if (typeof window === "undefined" || !window.speechSynthesis) return [];
@@ -82,12 +86,14 @@ export function listFrenchVoices(): SpeechSynthesisVoice[] {
   return fr.length ? fr : all;
 }
 
-/** Préfère une voix masculine (façon Jarvis) parmi les voix françaises. */
+/** Préfère une voix masculine et naturelle (façon Jarvis) parmi les voix françaises. */
 export function pickPreferredVoice(savedName?: string | null): SpeechSynthesisVoice | null {
   const list = listFrenchVoices();
   if (!list.length) return null;
   return (
     list.find((v) => v.name === savedName) ||
+    list.find((v) => NATURAL_VOICE_HINTS.test(v.name) && MALE_VOICE_HINTS.test(v.name)) ||
+    list.find((v) => NATURAL_VOICE_HINTS.test(v.name)) ||
     list.find((v) => MALE_VOICE_HINTS.test(v.name)) ||
     list.find((v) => !FEMALE_VOICE_HINTS.test(v.name)) ||
     list[0]

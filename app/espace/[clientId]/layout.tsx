@@ -29,7 +29,7 @@ export default async function EspaceLayout({
 
   const { data: client } = await supabase
     .from("profiles")
-    .select("id, full_name, coach_id")
+    .select("id, full_name, coach_id, coaching_mode")
     .eq("id", clientId)
     .maybeSingle();
 
@@ -68,7 +68,7 @@ export default async function EspaceLayout({
         mode={{ kind: "client", clientId, coachId: client.coach_id ?? viewer.id }}
         isCoach={viewer.role === "coach"}
       />
-      <BottomTabBar clientId={clientId} />
+      <BottomTabBar clientId={clientId} showIaCoachTab={client.coaching_mode === "ia"} />
     </div>
   );
 }

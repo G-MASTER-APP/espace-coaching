@@ -50,6 +50,12 @@ export function EspaceHeader({
         <>
           <span className="text-sm font-bold tracking-tight text-foreground">G-MASTER</span>
           <div className="ml-auto flex items-center gap-3">
+            <Link
+              href="/choix-coach"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground"
+            >
+              Changer de coach
+            </Link>
             <PushBell />
           </div>
         </>

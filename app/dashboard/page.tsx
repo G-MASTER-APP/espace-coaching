@@ -26,9 +26,23 @@ export default async function DashboardPage() {
 
   const { data: clients } = await supabase
     .from("profiles")
-    .select("id, full_name, last_active_at")
+    .select("id, full_name, last_active_at, coaching_mode")
     .eq("coach_id", user.id)
     .order("full_name");
+
+  const iaClientIds = (clients ?? []).filter((c) => c.coaching_mode === "ia").map((c) => c.id);
+  const { data: iaCoaching } =
+    iaClientIds.length > 0
+      ? await supabase
+          .from("ia_coaching")
+          .select("client_id, spend_total, spend_cycle, spend_limit, ai_name, alert_message, alert_created_at")
+          .in("client_id", iaClientIds)
+      : { data: [] };
+
+  const clientsWithIa = (clients ?? []).map((client) => ({
+    ...client,
+    ia: iaCoaching?.find((row) => row.client_id === client.id) ?? null,
+  }));
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col gap-6 px-4 py-8">
@@ -44,7 +58,7 @@ export default async function DashboardPage() {
           </form>
         }
       />
-      <ClientList clients={clients ?? []} />
+      <ClientList clients={clientsWithIa} />
       <JarvisWidget mode={{ kind: "coach-dashboard", coachId: user.id }} isCoach />
     </main>
   );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarCheck, Dumbbell, Video, Utensils, Ruler, HeartHandshake } from "lucide-react";
+import { CalendarCheck, Dumbbell, Video, Utensils, Ruler, HeartHandshake, Bot } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -15,13 +15,16 @@ const TABS = [
   { key: "accompagnement", label: "Suivi", icon: HeartHandshake },
 ] as const;
 
-export function BottomTabBar({ clientId }: { clientId: string }) {
+const IA_COACH_TAB = { key: "ia-coach", label: "Coach IA", icon: Bot } as const;
+
+export function BottomTabBar({ clientId, showIaCoachTab }: { clientId: string; showIaCoachTab?: boolean }) {
   const pathname = usePathname();
+  const tabs = showIaCoachTab ? [...TABS, IA_COACH_TAB] : TABS;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur">
       <ul className="mx-auto flex max-w-lg items-stretch justify-between px-1">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const href = `/espace/${clientId}/${tab.key}`;
           const active = pathname?.startsWith(href);
           const Icon = tab.icon;

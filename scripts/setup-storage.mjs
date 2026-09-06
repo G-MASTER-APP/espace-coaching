@@ -71,3 +71,54 @@ create policy "bilan_photos_storage_delete"
 const { error: sqlError } = await admin.rpc("exec_sql", { sql: policiesSql });
 if (sqlError) throw sqlError;
 console.log("Policies storage.objects appliquées.");
+
+// Bucket pour les vidéos/photos envoyées au Coach IA (analyse technique).
+// Même pattern de dossier ("{client_id}/{fichier}") et mêmes policies que
+// bilan-photos, mais un bucket à part car ce sont des vidéos (plus lourdes)
+// en plus des photos.
+if (!buckets?.some((b) => b.id === "ia-analyses")) {
+  const { error } = await admin.storage.createBucket("ia-analyses", {
+    public: false,
+    fileSizeLimit: "50MB",
+    allowedMimeTypes: [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/heic",
+      "video/mp4",
+      "video/quicktime",
+      "video/webm",
+    ],
+  });
+  if (error) throw error;
+  console.log("Bucket ia-analyses créé.");
+} else {
+  console.log("Bucket ia-analyses déjà présent.");
+}
+
+const iaAnalysesPoliciesSql = `
+drop policy if exists "ia_analyses_storage_select" on storage.objects;
+create policy "ia_analyses_storage_select"
+  on storage.objects for select
+  to authenticated
+  using (
+    bucket_id = 'ia-analyses'
+    and (
+      (storage.foldername(name))[1] = auth.uid()::text
+      or public.is_coach_of(((storage.foldername(name))[1])::uuid)
+    )
+  );
+
+drop policy if exists "ia_analyses_storage_insert" on storage.objects;
+create policy "ia_analyses_storage_insert"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'ia-analyses'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+`;
+
+const { error: iaSqlError } = await admin.rpc("exec_sql", { sql: iaAnalysesPoliciesSql });
+if (iaSqlError) throw iaSqlError;
+console.log("Policies storage.objects (ia-analyses) appliquées.");
