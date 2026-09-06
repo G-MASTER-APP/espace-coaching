@@ -54,6 +54,24 @@ export default async function IaCoachPage({
     supabase.from("body_measurements").select("id").eq("user_id", clientId).limit(1),
   ]);
 
+  // Dernière performance connue par exercice (le plus récent d'abord), pour
+  // afficher "la dernière fois" en filigrane dans le lecteur de séance —
+  // uniquement les 20 dernières séances loguées, largement suffisant.
+  const { data: workoutLogs } = await supabase
+    .from("ia_workout_logs")
+    .select("exercices, completed_at")
+    .eq("client_id", clientId)
+    .order("completed_at", { ascending: false })
+    .limit(20);
+
+  const lastPerformance: Record<string, { poids_kg: number; repetitions: number }[]> = {};
+  for (const log of workoutLogs ?? []) {
+    const exercices = (log.exercices ?? []) as { nom: string; series: { poids_kg: number; repetitions: number }[] }[];
+    for (const ex of exercices) {
+      if (!lastPerformance[ex.nom]) lastPerformance[ex.nom] = ex.series;
+    }
+  }
+
   return (
     <IaCoachView
       clientId={clientId}
@@ -75,6 +93,7 @@ export default async function IaCoachPage({
       }
       analyses={analyses ?? []}
       hasBilan={(bilans ?? []).length > 0}
+      lastPerformance={lastPerformance}
     />
   );
 }

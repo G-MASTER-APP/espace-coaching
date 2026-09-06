@@ -5,22 +5,41 @@ import { Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-type Serie = { poids_kg: number; repetitions: number; done?: boolean };
-type Exercice = { nom: string; series: Serie[]; repos_secondes?: number };
+type PrescribedSerie = { poids_kg: number; repetitions: number };
+type Serie = { poids_kg: number | null; repetitions: number | null; done?: boolean };
+type Exercice = { nom: string; series: PrescribedSerie[]; repos_secondes?: number };
+type LiveExercice = { nom: string; series: Serie[]; repos_secondes?: number };
 export type Seance = { nom: string; exercices: Exercice[] };
 type Recap = { totalSets: number; totalVolumeKg: number; exercisesCount: number };
+type LastPerformance = Record<string, PrescribedSerie[]>;
 
 export function SeancePlayer({
   seance,
+  lastPerformance,
   onFinished,
   onCancel,
 }: {
   seance: Seance;
+  lastPerformance: LastPerformance;
   onFinished: (recap: Recap) => void;
   onCancel: () => void;
 }) {
-  const [exercices, setExercices] = useState<Exercice[]>(() =>
-    seance.exercices.map((ex) => ({ ...ex, series: ex.series.map((s) => ({ ...s, done: false })) }))
+  // Si une dernière performance existe pour cet exercice, la case démarre
+  // vide (le chiffre d'avant s'affiche juste en filigrane, façon Hevy) —
+  // sinon elle démarre pré-remplie avec ce que l'IA a prescrit, pour ne
+  // pas laisser un client sans aucun repère la toute première fois.
+  const [exercices, setExercices] = useState<LiveExercice[]>(() =>
+    seance.exercices.map((ex) => {
+      const hasHistory = Boolean(lastPerformance[ex.nom]?.length);
+      return {
+        ...ex,
+        series: ex.series.map((s) => ({
+          poids_kg: hasHistory ? null : s.poids_kg,
+          repetitions: hasHistory ? null : s.repetitions,
+          done: false,
+        })),
+      };
+    })
   );
   const [restRemaining, setRestRemaining] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
@@ -61,6 +80,10 @@ export function SeancePlayer({
     startRest(exercices[exIdx].repos_secondes || 60);
   }
 
+  function placeholderFor(exNom: string, serieIdx: number, prescribed: PrescribedSerie) {
+    return lastPerformance[exNom]?.[serieIdx] ?? prescribed;
+  }
+
   async function finish() {
     setSaving(true);
     try {
@@ -69,9 +92,18 @@ export function SeancePlayer({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           seanceNom: seance.nom,
-          exercices: exercices.map((ex) => ({
+          // Case laissée vide -> on garde ce qui était affiché en filigrane
+          // (dernière fois, ou à défaut la prescription de l'IA) : le
+          // client n'a rien tapé, donc rien n'a changé par rapport à ça.
+          exercices: exercices.map((ex, exIdx) => ({
             nom: ex.nom,
-            series: ex.series.map((s) => ({ poids_kg: s.poids_kg, repetitions: s.repetitions })),
+            series: ex.series.map((s, serieIdx) => {
+              const fallback = placeholderFor(ex.nom, serieIdx, seance.exercices[exIdx].series[serieIdx]);
+              return {
+                poids_kg: s.poids_kg ?? fallback.poids_kg,
+                repetitions: s.repetitions ?? fallback.repetitions,
+              };
+            }),
           })),
         }),
       });
@@ -109,15 +141,19 @@ export function SeancePlayer({
               <span className="text-muted-foreground">Poids (kg)</span>
               <span className="text-muted-foreground">Répétitions</span>
               <span />
-              {ex.series.map((s, serieIdx) => (
-                <FragmentRow
-                  key={serieIdx}
-                  index={serieIdx}
-                  serie={s}
-                  onChange={(patch) => updateSerie(exIdx, serieIdx, patch)}
-                  onValidate={() => validateSerie(exIdx, serieIdx)}
-                />
-              ))}
+              {ex.series.map((s, serieIdx) => {
+                const ph = placeholderFor(ex.nom, serieIdx, seance.exercices[exIdx].series[serieIdx]);
+                return (
+                  <FragmentRow
+                    key={serieIdx}
+                    index={serieIdx}
+                    serie={s}
+                    placeholder={ph}
+                    onChange={(patch) => updateSerie(exIdx, serieIdx, patch)}
+                    onValidate={() => validateSerie(exIdx, serieIdx)}
+                  />
+                );
+              })}
             </div>
           </div>
         ))}
@@ -133,11 +169,13 @@ export function SeancePlayer({
 function FragmentRow({
   index,
   serie,
+  placeholder,
   onChange,
   onValidate,
 }: {
   index: number;
   serie: Serie;
+  placeholder: PrescribedSerie;
   onChange: (patch: Partial<Serie>) => void;
   onValidate: () => void;
 }) {
@@ -148,16 +186,18 @@ function FragmentRow({
         type="number"
         step="0.5"
         min="0"
-        value={serie.poids_kg}
-        onChange={(e) => onChange({ poids_kg: Number(e.target.value) })}
-        className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm text-foreground"
+        value={serie.poids_kg ?? ""}
+        placeholder={String(placeholder.poids_kg)}
+        onChange={(e) => onChange({ poids_kg: e.target.value === "" ? null : Number(e.target.value) })}
+        className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm text-foreground placeholder:text-muted-foreground/50"
       />
       <input
         type="number"
         min="0"
-        value={serie.repetitions}
-        onChange={(e) => onChange({ repetitions: Number(e.target.value) })}
-        className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm text-foreground"
+        value={serie.repetitions ?? ""}
+        placeholder={String(placeholder.repetitions)}
+        onChange={(e) => onChange({ repetitions: e.target.value === "" ? null : Number(e.target.value) })}
+        className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm text-foreground placeholder:text-muted-foreground/50"
       />
       <button
         type="button"

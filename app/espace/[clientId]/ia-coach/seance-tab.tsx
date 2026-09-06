@@ -6,7 +6,13 @@ import { SeancePlayer, type Seance } from "./seance-player";
 
 type Recap = { totalSets: number; totalVolumeKg: number; exercisesCount: number };
 
-export function SeanceTab({ program }: { program: Record<string, unknown> }) {
+export function SeanceTab({
+  program,
+  lastPerformance,
+}: {
+  program: Record<string, unknown>;
+  lastPerformance: Record<string, { poids_kg: number; repetitions: number }[]>;
+}) {
   const seances = Array.isArray(program.seances) ? (program.seances as Seance[]) : [];
   const [active, setActive] = useState<Seance | null>(null);
   const [recap, setRecap] = useState<Recap | null>(null);
@@ -44,6 +50,7 @@ export function SeanceTab({ program }: { program: Record<string, unknown> }) {
     return (
       <SeancePlayer
         seance={active}
+        lastPerformance={lastPerformance}
         onCancel={() => setActive(null)}
         onFinished={(r) => {
           setRecap(r);

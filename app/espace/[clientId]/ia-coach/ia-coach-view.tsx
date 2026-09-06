@@ -47,6 +47,7 @@ export function IaCoachView({
   coaching,
   analyses,
   hasBilan,
+  lastPerformance,
 }: {
   clientId: string;
   isCoachView: boolean;
@@ -54,6 +55,7 @@ export function IaCoachView({
   coaching: Coaching;
   analyses: Analysis[];
   hasBilan: boolean;
+  lastPerformance: Record<string, { poids_kg: number; repetitions: number }[]>;
 }) {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("chat");
   const [muted, setMuted] = useState(false);
@@ -189,7 +191,9 @@ export function IaCoachView({
               muted={muted}
             />
           )}
-          {!isCoachView && tab === "seance" && <SeanceTab program={coaching.program} />}
+          {!isCoachView && tab === "seance" && (
+            <SeanceTab program={coaching.program} lastPerformance={lastPerformance} />
+          )}
           {!isCoachView && tab === "objectif" && (
             <ObjectifSelector
               initialTags={objectifTags}
